@@ -47,3 +47,15 @@ JDK 17 ou superior
 Node.js 18 ou superior
 
 PostgreSQL rodando localmente
+
+
+
+📈 Próximas Implementações
+[ ] Envio automático de lembretes de pagamento via WhatsApp.
+
+[ ] Geração de relatórios mensais em PDF.
+
+[ ] Portal do Aluno para consulta de graduação e histórico de treinos.
+
+👤 Autor
+Thomas Profissional de Logística & Estudante de Ciência da Computação LinkedIn | Portfólio
