@@ -1,6 +1,4 @@
-Um bom README é o cartão de visitas do seu projeto. Como você está fazendo uma transição de carreira para Logística e Dados, ter um projeto de gestão (como o do CT de Judô) bem documentado no GitHub demonstra que você sabe aplicar tecnologia para resolver problemas reais de negócio.
 
-Aqui está um modelo profissional, estruturado e pronto para você copiar:
 
 🥋 Sistema de Gestão - CT Ferroviário de Judô
 Sistema full-stack desenvolvido para automatizar a gestão de atletas e o controle financeiro do CT Ferroviário de Judô. O projeto substitui processos manuais por uma interface moderna, com automação de mensalidades e indicadores visuais de inadimplência.
