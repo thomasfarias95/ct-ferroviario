@@ -1,13 +1,8 @@
-# Estágio de Build
-FROM eclipse-temurin:21-jdk-jammy as build
-WORKDIR /app
+FROM maven:3.8.5-openjdk-17 AS build
 COPY . .
-# Dá permissão e executa o build
-RUN chmod +x mvnw && ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
-# Estágio de Execução
-FROM eclipse-temurin:21-jre-jammy
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
+FROM openjdk:17-jdk-slim
+COPY --from=build /target/*.jar app.jar
+EXPOSE 10000
 ENTRYPOINT ["java", "-jar", "app.jar"]
