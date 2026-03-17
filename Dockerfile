@@ -2,7 +2,8 @@
 FROM eclipse-temurin:21-jdk-jammy as build
 WORKDIR /app
 COPY . .
-RUN ./mvnw clean package -DskipTests
+# Dá permissão e executa o build
+RUN chmod +x mvnw && ./mvnw clean package -DskipTests
 
 # Estágio de Execução
 FROM eclipse-temurin:21-jre-jammy
