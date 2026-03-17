@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/cadastro")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "https://seu-projeto.vercel.app")
 public class CadastroController {
 
     @Autowired private ProfessorRepository profRepo;

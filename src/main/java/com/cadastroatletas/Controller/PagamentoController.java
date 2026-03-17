@@ -11,7 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pagamentos")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "https://seu-projeto.vercel.app")
 public class PagamentoController {
 
     @Autowired

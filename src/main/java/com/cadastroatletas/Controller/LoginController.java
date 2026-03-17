@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
-@CrossOrigin(origins = "*") // Certifique-se que seu Next.js está na porta 3000
+@CrossOrigin(origins = "https://seu-projeto.vercel.app") // Certifique-se que seu Next.js está na porta 3000
 @RestController
 @RequestMapping("/api/auth") // Certifique-se que o Next está na 3000
 public class LoginController {

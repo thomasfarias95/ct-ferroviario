@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api") // Mudei a rota base para englobar todas as operações
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "https://seu-projeto.vercel.app")
 public class ProfessorController {
 
     @Autowired
