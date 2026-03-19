@@ -6,6 +6,7 @@ import com.cadastroatletas.Service.PagamentoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/cadastro/atletas")
@@ -18,15 +19,29 @@ public class AtletaController {
     @Autowired
     private PagamentoService pagamentoService;
 
-    // Mantenha APENAS este método POST
+    // Cadastro de novo Atleta/Aluno
     @PostMapping
     public ResponseEntity<Atleta> cadastrar(@RequestBody Atleta atleta) {
-        // 1. Salva o atleta no banco
+        // Garante que novos cadastros comecem como Ativos
+        atleta.setAtivo(true);
+
         Atleta atletaSalvo = atletaRepository.save(atleta);
 
-        // 2. Cria o pagamento automático usando o Service
+        // Cria o registro de pagamento (logística financeira manual)
         pagamentoService.criarPagamento(atletaSalvo.getId());
 
         return ResponseEntity.ok(atletaSalvo);
+    }
+
+    // Listagem para os Gráficos (Dashboard)
+    @GetMapping
+    public List<Atleta> listarTodos() {
+        return atletaRepository.findAll();
+    }
+
+    // Listagem por Turno (Para a lista de chamada de Abril)
+    @GetMapping("/turno/{turno}")
+    public List<Atleta> listarPorTurno(@PathVariable String turno) {
+        return atletaRepository.findByTurnoAndAtivoTrue(turno.toUpperCase());
     }
 }

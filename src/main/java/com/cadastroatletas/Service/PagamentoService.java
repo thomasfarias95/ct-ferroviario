@@ -5,15 +5,14 @@ import com.cadastroatletas.Entity.Pagamento;
 import com.cadastroatletas.Repository.AtletaRepository;
 import com.cadastroatletas.Repository.PagamentoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
-@EnableScheduling
 public class PagamentoService {
 
     @Autowired
@@ -22,44 +21,65 @@ public class PagamentoService {
     @Autowired
     private AtletaRepository atletaRepository;
 
+    // Listar quem está com o boleto vencendo em X dias
     public List<Pagamento> listarVencimentosProximos(int dias) {
         LocalDate dataLimite = LocalDate.now().plusDays(dias);
         return pagamentoRepository.findByPagoFalseAndDataVencimentoLessThanEqual(dataLimite);
     }
+
+    // Listar quem já passou do vencimento e não pagou (Inadimplentes)
     public List<Pagamento> listarInadimplentes() {
         return pagamentoRepository.findByPagoFalseAndDataVencimentoBefore(LocalDate.now());
     }
 
-    @Scheduled(cron = "0 0 0 1 * ?") // Roda às 00:00 do dia 1º de cada mês
+    // AUTOMAÇÃO: Gera uma NOVA linha na tabela para cada aluno ativo no dia 1º
+    @Scheduled(cron = "0 0 0 1 * ?")
     public void renovarPagamentosMensais() {
-        // 1. Busca todos os atletas ativos ou pagamentos do mês anterior
-        List<Pagamento> pagamentos = pagamentoRepository.findAll();
+        // Buscamos os atletas (quem gera a mensalidade é o Atleta Ativo, não o pagamento antigo)
+        List<Atleta> atletasAtivos = atletaRepository.findAll()
+                .stream()
+                .filter(Atleta::isAtivo) // Supondo que adicionamos o campo 'ativo' na Entity
+                .toList();
 
-        for (Pagamento p : pagamentos) {
-            // 2. Cria uma nova entrada para o próximo mês ou reseta o atual
-            // Isso depende de como você modelou o banco (se salva histórico ou apenas atualiza)
-            p.setPago(false);
-            p.setDataVencimento(p.getDataVencimento().plusMonths(1));
-            pagamentoRepository.save(p);
+        for (Atleta atleta : atletasAtivos) {
+            gerarNovoPagamento(atleta);
         }
     }
+
+    // Criar o primeiro pagamento ao cadastrar um novo atleta
     public void criarPagamento(Long atletaId) {
-        // 1. Busca o atleta no banco para garantir que ele existe e obter o objeto completo
         Atleta atleta = atletaRepository.findById(atletaId)
                 .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
 
-        // 2. Cria a nova instância de Pagamento
+        gerarNovoPagamento(atleta);
+    }
+
+    // Método auxiliar para centralizar a regra de negócio
+    private void gerarNovoPagamento(Atleta atleta) {
         Pagamento novoPagamento = new Pagamento();
-
-        // 3. Faz a ligação da Chave Estrangeira (Associa o objeto Atleta ao Pagamento)
         novoPagamento.setAtleta(atleta);
-
-        // 4. Define as regras de negócio (Vencimento para o mês seguinte e status pendente)
-        novoPagamento.setDataVencimento(LocalDate.now().plusMonths(1));
+        novoPagamento.setValor(new BigDecimal("100.00")); // Valor padrão do CT
         novoPagamento.setPago(false);
 
-        // 5. Salva no banco de dados
+        // Define o vencimento com base no dia escolhido (ex: dia 10 de cada mês)
+        LocalDate vencimento = LocalDate.now().withDayOfMonth(atleta.getDiaVencimento());
+
+        // Se hoje já passou do dia de vencimento, coloca para o mês que vem
+        if (vencimento.isBefore(LocalDate.now())) {
+            vencimento = vencimento.plusMonths(1);
+        }
+
+        novoPagamento.setDataVencimento(vencimento);
         pagamentoRepository.save(novoPagamento);
     }
 
+    // MÉTODO PARA O BOTÃO DE "DAR BAIXA" (O que você vai usar no Front)
+    public Pagamento confirmarPagamento(Long pagamentoId) {
+        Pagamento p = pagamentoRepository.findById(pagamentoId)
+                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
+
+        p.setPago(true);
+        p.setDataPagamento(LocalDate.now()); // Registra o dia que o dinheiro entrou
+        return pagamentoRepository.save(p);
+    }
 }
