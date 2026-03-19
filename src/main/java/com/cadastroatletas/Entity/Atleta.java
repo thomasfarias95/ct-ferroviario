@@ -21,9 +21,9 @@ public class Atleta {
     private LocalDate dataNascimento;
     private String graduacao;
     private String turno; // "MANHA", "TARDE", "NOITE"
-    private String nomeResponsavel; // Essencial para alunos de 3 a 10 anos
-    private boolean ativo = true; // Para controle de trancamento de matrícula
-    private Integer diaVencimento;
+    private String nomeResponsavel;
+    private Boolean ativo = true;
+    private Integer diaVencimento = 10; // Valor padrão para evitar erro de cálculo
     private String statusPagamento;
     private String sexo;
 
@@ -33,18 +33,7 @@ public class Atleta {
 
     public Atleta() {}
 
-    // --- Getters e Setters dos novos campos ---
-    public String getTurno() { return turno; }
-    public void setTurno(String turno) { this.turno = turno; }
-
-    public String getNomeResponsavel() { return nomeResponsavel; }
-    public void setNomeResponsavel(String nomeResponsavel) { this.nomeResponsavel = nomeResponsavel; }
-
-    public boolean isAtivo() { return ativo; }
-    public void setAtivo(boolean ativo) { this.ativo = ativo; }
-    // ------------------------------------------
-
-    // Getters e Setters existentes
+    // Getters e Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getNome() { return nome; }
@@ -63,17 +52,18 @@ public class Atleta {
     public void setDataNascimento(LocalDate dataNascimento) { this.dataNascimento = dataNascimento; }
     public String getGraduacao() { return graduacao; }
     public void setGraduacao(String graduacao) { this.graduacao = graduacao; }
+    public String getTurno() { return turno; }
+    public void setTurno(String turno) { this.turno = turno; }
+    public String getNomeResponsavel() { return nomeResponsavel; }
+    public void setNomeResponsavel(String nomeResponsavel) { this.nomeResponsavel = nomeResponsavel; }
+    public Boolean isAtivo() { return ativo; }
+    public void setAtivo(Boolean ativo) { this.ativo = ativo; }
     public Integer getDiaVencimento() { return diaVencimento; }
     public void setDiaVencimento(Integer diaVencimento) { this.diaVencimento = diaVencimento; }
     public String getStatusPagamento() { return statusPagamento; }
     public void setStatusPagamento(String statusPagamento) { this.statusPagamento = statusPagamento; }
+    public String getSexo() { return sexo; }
+    public void setSexo(String sexo) { this.sexo = sexo; }
     public List<Pagamento> getPagamentos() { return pagamentos; }
     public void setPagamentos(List<Pagamento> pagamentos) { this.pagamentos = pagamentos; }
-    public String getSexo() {
-        return sexo;
-    }
-
-    public void setSexo(String sexo) {
-        this.sexo = sexo;
-    }
 }

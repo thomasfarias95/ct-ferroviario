@@ -17,15 +17,11 @@ public class CadastroController {
     @Autowired private ProfessorRepository profRepo;
     @Autowired private AtletaRepository alunoRepo;
 
-    // Rota para listar (A que estava faltando)
-    @GetMapping("/atletas")
-    public ResponseEntity<?> listarAtletas() {
-        return ResponseEntity.ok(alunoRepo.findAll());
-    }
+
 
     @PostMapping("/novo")
     public ResponseEntity<?> cadastrar(@RequestBody UsuarioDTO dto) {
-        // ... (seu código de cadastro igual ao que você já tem)
+
         if ("ALUNO".equalsIgnoreCase(dto.getPapel())) {
             Atleta a = new Atleta();
             a.setNomeCompleto(dto.getNomeCompleto());

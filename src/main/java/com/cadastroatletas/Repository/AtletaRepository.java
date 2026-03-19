@@ -5,25 +5,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.List;
-import java.util.Optional; // Importe necessário para o login
+import java.util.Optional;
 
 @Repository
 public interface AtletaRepository extends JpaRepository<Atleta, Long> {
 
-    // --- ESSENCIAL PARA O LOGIN (O que causou o erro no Render) ---
     Optional<Atleta> findByEmail(String email);
 
-    // 1. Para sua lista de presença de Abril:
     List<Atleta> findByTurnoAndAtivoTrue(String turno);
 
-    // 2. Para o seu Gráfico de Pizza (Contagem por Sexo):
     @Query("SELECT a.sexo, COUNT(a) FROM Atleta a WHERE a.ativo = true GROUP BY a.sexo")
     List<Object[]> countAtletasBySexo();
 
-    // 3. Para o seu Gráfico de Idades (Agrupado por ano de nascimento):
-    @Query("SELECT YEAR(a.dataNascimento), COUNT(a) FROM Atleta a GROUP BY YEAR(a.dataNascimento)")
+    @Query("SELECT EXTRACT(YEAR FROM a.dataNascimento), COUNT(a) FROM Atleta a GROUP BY EXTRACT(YEAR FROM a.dataNascimento)")
     List<Object[]> countAtletasByAnoNascimento();
-
-    // 4. Para o seu Gráfico de Colunas (Financeiro - Mensalidades Pendentes):
-    List<Atleta> findByStatusPagamentoAndAtivoTrue(String status);
 }
