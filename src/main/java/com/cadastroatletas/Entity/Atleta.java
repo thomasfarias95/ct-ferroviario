@@ -16,16 +16,19 @@ public class Atleta {
     private String nomeCompleto;
     private String email;
     private String senha;
-    private String papel; // "ADMIN", "ALUNO", "PROFESSOR"
+    private String papel;
     private String telefone;
     private LocalDate dataNascimento;
     private String graduacao;
-    private String turno; // "MANHA", "TARDE", "NOITE"
+    private String turno;
     private String nomeResponsavel;
     private Boolean ativo = true;
-    private Integer diaVencimento = 10; // Valor padrão para evitar erro de cálculo
+    private Integer diaVencimento = 10;
     private String statusPagamento;
     private String sexo;
+
+
+    private LocalDate ultimaNotificacao;
 
     @OneToMany(mappedBy = "atleta", cascade = CascadeType.ALL)
     @JsonIgnore
@@ -33,7 +36,7 @@ public class Atleta {
 
     public Atleta() {}
 
-    // Getters e Setters
+    // Getters e Setters (Mantendo os outros...)
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getNome() { return nome; }
@@ -66,4 +69,8 @@ public class Atleta {
     public void setSexo(String sexo) { this.sexo = sexo; }
     public List<Pagamento> getPagamentos() { return pagamentos; }
     public void setPagamentos(List<Pagamento> pagamentos) { this.pagamentos = pagamentos; }
+
+
+    public LocalDate getUltimaNotificacao() { return ultimaNotificacao; }
+    public void setUltimaNotificacao(LocalDate ultimaNotificacao) { this.ultimaNotificacao = ultimaNotificacao; }
 }
