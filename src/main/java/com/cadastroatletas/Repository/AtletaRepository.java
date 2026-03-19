@@ -5,9 +5,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional; // Importe necessário para o login
 
 @Repository
 public interface AtletaRepository extends JpaRepository<Atleta, Long> {
+
+    // --- ESSENCIAL PARA O LOGIN (O que causou o erro no Render) ---
+    Optional<Atleta> findByEmail(String email);
 
     // 1. Para sua lista de presença de Abril:
     List<Atleta> findByTurnoAndAtivoTrue(String turno);
