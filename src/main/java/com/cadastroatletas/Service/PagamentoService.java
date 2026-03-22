@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PagamentoService {
@@ -69,33 +70,31 @@ public class PagamentoService {
         pagamentoRepository.saveAndFlush(novoPagamento);
     }
 
-    /**
-     * CONFIRMAÇÃO DE PAGAMENTO (Versão com Gravação Forçada)
-     * Garante que o status "EM_DIA" persista após o F5 no Dashboard.
-     */
     @Transactional
     public Pagamento confirmarPagamentoPeloAtleta(Long atletaId) {
-        // 1. Buscamos o atleta diretamente para garantir que o objeto está "vivo" na sessão
+        // 1. Busca o atleta
         Atleta atleta = atletaRepository.findById(atletaId)
-                .orElseThrow(() -> new RuntimeException("Atleta não encontrado com ID: " + atletaId));
+                .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
 
-        // 2. Buscamos o primeiro pagamento pendente disponível
-        Pagamento p = pagamentoRepository.findAll().stream()
-                .filter(pag -> pag.getAtleta().getId().equals(atletaId))
+        // 2. Busca o pagamento pendente com proteção contra nulos
+        Optional<Pagamento> pagamentoPendente = pagamentoRepository.findAll().stream()
+                .filter(pag -> pag.getAtleta() != null && pag.getAtleta().getId().equals(atletaId))
                 .filter(pag -> !pag.isPago())
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Nenhum pagamento pendente encontrado para este atleta."));
+                .findFirst();
 
-        // 3. Atualiza o registro do Pagamento
-        p.setPago(true);
-        p.setDataPagamento(LocalDate.now());
-        pagamentoRepository.saveAndFlush(p);
+        // Se encontrar, atualiza. Se não encontrar (ex: já está pago), apenas garante que o Atleta está EM_DIA
+        if (pagamentoPendente.isPresent()) {
+            Pagamento p = pagamentoPendente.get();
+            p.setPago(true);
+            p.setDataPagamento(LocalDate.now());
+            pagamentoRepository.saveAndFlush(p);
+        }
 
-        // 4. ATUALIZAÇÃO DO STATUS DO ATLETA: O saveAndFlush garante a persistência imediata
+        // 3. Garante o status no Atleta (Isso resolve o problema do F5)
         atleta.setStatusPagamento("EM_DIA");
         atletaRepository.saveAndFlush(atleta);
 
-        return p;
+        return pagamentoPendente.orElse(null);
     }
 
     @Transactional
@@ -108,8 +107,10 @@ public class PagamentoService {
         pagamentoRepository.saveAndFlush(p);
 
         Atleta atleta = p.getAtleta();
-        atleta.setStatusPagamento("EM_DIA");
-        atletaRepository.saveAndFlush(atleta);
+        if (atleta != null) {
+            atleta.setStatusPagamento("EM_DIA");
+            atletaRepository.saveAndFlush(atleta);
+        }
 
         return p;
     }
