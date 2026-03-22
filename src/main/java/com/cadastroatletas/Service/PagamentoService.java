@@ -31,10 +31,6 @@ public class PagamentoService {
         return pagamentoRepository.findByPagoFalseAndDataVencimentoBefore(LocalDate.now());
     }
 
-    /**
-     * LÓGICA DE BALANCETE: Roda todo dia 1º do mês.
-     * Reseta o status do atleta para PENDENTE e gera nova cobrança.
-     */
     @Scheduled(cron = "0 0 0 1 * ?")
     @Transactional
     public void renovarPagamentosMensais() {
@@ -45,7 +41,7 @@ public class PagamentoService {
 
         for (Atleta atleta : atletasAtivos) {
             atleta.setStatusPagamento("PENDENTE");
-            atletaRepository.save(atleta);
+            atletaRepository.saveAndFlush(atleta);
             gerarNovoPagamento(atleta);
         }
     }
@@ -70,46 +66,51 @@ public class PagamentoService {
         }
 
         novoPagamento.setDataVencimento(vencimento);
-        pagamentoRepository.save(novoPagamento);
+        pagamentoRepository.saveAndFlush(novoPagamento);
     }
 
     /**
-     * CONFIRMAÇÃO DE PAGAMENTO (Versão Corrigida para Persistência)
-     * Busca o primeiro pagamento pendente e atualiza o status do atleta no banco.
+     * CONFIRMAÇÃO DE PAGAMENTO (Versão com Gravação Forçada)
+     * Garante que o status "EM_DIA" persista após o F5 no Dashboard.
      */
     @Transactional
     public Pagamento confirmarPagamentoPeloAtleta(Long atletaId) {
-        // Buscamos o registro de pagamento pendente mais antigo/disponível
+        // 1. Buscamos o atleta diretamente para garantir que o objeto está "vivo" na sessão
+        Atleta atleta = atletaRepository.findById(atletaId)
+                .orElseThrow(() -> new RuntimeException("Atleta não encontrado com ID: " + atletaId));
+
+        // 2. Buscamos o primeiro pagamento pendente disponível
         Pagamento p = pagamentoRepository.findAll().stream()
                 .filter(pag -> pag.getAtleta().getId().equals(atletaId))
                 .filter(pag -> !pag.isPago())
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Nenhum pagamento pendente encontrado para o ID: " + atletaId));
+                .orElseThrow(() -> new RuntimeException("Nenhum pagamento pendente encontrado para este atleta."));
 
-        // 1. Atualiza o registro do Pagamento
+        // 3. Atualiza o registro do Pagamento
         p.setPago(true);
         p.setDataPagamento(LocalDate.now());
+        pagamentoRepository.saveAndFlush(p);
 
-        // 2. ATUALIZAÇÃO CRUCIAL: Muda o status no Atleta para persistir no Dashboard (F5)
-        Atleta atleta = p.getAtleta();
+        // 4. ATUALIZAÇÃO DO STATUS DO ATLETA: O saveAndFlush garante a persistência imediata
         atleta.setStatusPagamento("EM_DIA");
-        atletaRepository.save(atleta);
+        atletaRepository.saveAndFlush(atleta);
 
-        // 3. Salva o pagamento e retorna
-        return pagamentoRepository.save(p);
+        return p;
     }
 
+    @Transactional
     public Pagamento confirmarPagamento(Long pagamentoId) {
         Pagamento p = pagamentoRepository.findById(pagamentoId)
                 .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
+
         p.setPago(true);
         p.setDataPagamento(LocalDate.now());
+        pagamentoRepository.saveAndFlush(p);
 
-        // Garantindo que o status do atleta também mude aqui
         Atleta atleta = p.getAtleta();
         atleta.setStatusPagamento("EM_DIA");
-        atletaRepository.save(atleta);
+        atletaRepository.saveAndFlush(atleta);
 
-        return pagamentoRepository.save(p);
+        return p;
     }
 }
