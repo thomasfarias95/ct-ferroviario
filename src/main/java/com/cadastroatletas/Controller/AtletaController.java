@@ -3,6 +3,7 @@ package com.cadastroatletas.Controller;
 import com.cadastroatletas.Service.PagamentoService;
 import com.cadastroatletas.Entity.Atleta;
 import com.cadastroatletas.Repository.AtletaRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/cadastro/atletas")
 @CrossOrigin("*")
+@Transactional
 public class AtletaController {
 
     @Autowired
