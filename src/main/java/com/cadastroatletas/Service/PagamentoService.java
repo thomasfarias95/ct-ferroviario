@@ -7,6 +7,7 @@ import com.cadastroatletas.Repository.PagamentoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,6 +24,7 @@ public class PagamentoService {
 
     public List<Pagamento> listarVencimentosProximos(int dias) {
         LocalDate dataLimite = LocalDate.now().plusDays(dias);
+        // Ajuste aqui também para isPago se necessário no Repository
         return pagamentoRepository.findByPagoFalseAndDataVencimentoLessThanEqual(dataLimite);
     }
 
@@ -30,15 +32,24 @@ public class PagamentoService {
         return pagamentoRepository.findByPagoFalseAndDataVencimentoBefore(LocalDate.now());
     }
 
+    /**
+     * LÓGICA DE BALANCETE: Roda todo dia 1º do mês.
+     * Reseta o status do atleta na tela e gera a nova cobrança no banco.
+     */
     @Scheduled(cron = "0 0 0 1 * ?")
+    @Transactional
     public void renovarPagamentosMensais() {
-        // CORREÇÃO: Usando getAtivo() e garantindo que não seja nulo antes de filtrar
         List<Atleta> atletasAtivos = atletaRepository.findAll()
                 .stream()
                 .filter(atleta -> atleta.getAtivo() != null && atleta.getAtivo())
                 .toList();
 
         for (Atleta atleta : atletasAtivos) {
+            // 1. O status só volta para PENDENTE quando o mês vira aqui
+            atleta.setStatusPagamento("PENDENTE");
+            atletaRepository.save(atleta);
+
+            // 2. Gera o registro de pagamento para o novo mês
             gerarNovoPagamento(atleta);
         }
     }
@@ -46,7 +57,6 @@ public class PagamentoService {
     public void criarPagamento(Long atletaId) {
         Atleta atleta = atletaRepository.findById(atletaId)
                 .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
-
         gerarNovoPagamento(atleta);
     }
 
@@ -56,10 +66,10 @@ public class PagamentoService {
         novoPagamento.setValor(new BigDecimal("100.00"));
         novoPagamento.setPago(false);
 
-        // Segurança: Se o dia de vencimento for nulo na Entity, assume dia 10
         int diaVencimento = (atleta.getDiaVencimento() != null) ? atleta.getDiaVencimento() : 10;
         LocalDate vencimento = LocalDate.now().withDayOfMonth(diaVencimento);
 
+        // Se hoje já passou do dia de vencimento, agenda para o mês seguinte
         if (vencimento.isBefore(LocalDate.now())) {
             vencimento = vencimento.plusMonths(1);
         }
@@ -68,34 +78,36 @@ public class PagamentoService {
         pagamentoRepository.save(novoPagamento);
     }
 
-    public Pagamento confirmarPagamento(Long pagamentoId) {
-        Pagamento p = pagamentoRepository.findById(pagamentoId)
-                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
-
-        p.setPago(true);
-        p.setDataPagamento(LocalDate.now());
-        return pagamentoRepository.save(p);
-    }
+    @Transactional
     public Pagamento confirmarPagamentoPeloAtleta(Long atletaId) {
-        // Busca o pagamento que NÃO está pago e que vence no mês atual para este atleta
         LocalDate inicioMes = LocalDate.now().withDayOfMonth(1);
         LocalDate fimMes = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
 
+        // CORREÇÃO: Usando isPago() para evitar erro de compilação do Lombok
         Pagamento p = pagamentoRepository.findAll().stream()
                 .filter(pag -> pag.getAtleta().getId().equals(atletaId))
-                .filter(pag -> !pag.isPago()) // Só os que não foram pagos
+                .filter(pag -> !pag.isPago())
                 .filter(pag -> !pag.getDataVencimento().isBefore(inicioMes) && !pag.getDataVencimento().isAfter(fimMes))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Nenhum pagamento pendente encontrado para este mês"));
+                .orElseThrow(() -> new RuntimeException("Nenhum pagamento pendente para este mês"));
 
         p.setPago(true);
         p.setDataPagamento(LocalDate.now());
 
-        // Opcional: Atualiza o status no objeto Atleta também para facilitar a consulta
+        // PERSISTÊNCIA: Atualiza o status no Atleta para o Dashboard não zerar no F5
         Atleta atleta = p.getAtleta();
         atleta.setStatusPagamento("EM_DIA");
         atletaRepository.save(atleta);
 
+        return pagamentoRepository.save(p);
+    }
+
+    // Método antigo mantido por compatibilidade
+    public Pagamento confirmarPagamento(Long pagamentoId) {
+        Pagamento p = pagamentoRepository.findById(pagamentoId)
+                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
+        p.setPago(true);
+        p.setDataPagamento(LocalDate.now());
         return pagamentoRepository.save(p);
     }
 }
