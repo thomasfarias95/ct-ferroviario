@@ -24,7 +24,6 @@ public class PagamentoService {
 
     public List<Pagamento> listarVencimentosProximos(int dias) {
         LocalDate dataLimite = LocalDate.now().plusDays(dias);
-        // Ajuste aqui também para isPago se necessário no Repository
         return pagamentoRepository.findByPagoFalseAndDataVencimentoLessThanEqual(dataLimite);
     }
 
@@ -34,7 +33,7 @@ public class PagamentoService {
 
     /**
      * LÓGICA DE BALANCETE: Roda todo dia 1º do mês.
-     * Reseta o status do atleta na tela e gera a nova cobrança no banco.
+     * Reseta o status do atleta para PENDENTE e gera nova cobrança.
      */
     @Scheduled(cron = "0 0 0 1 * ?")
     @Transactional
@@ -45,11 +44,8 @@ public class PagamentoService {
                 .toList();
 
         for (Atleta atleta : atletasAtivos) {
-            // 1. O status só volta para PENDENTE quando o mês vira aqui
             atleta.setStatusPagamento("PENDENTE");
             atletaRepository.save(atleta);
-
-            // 2. Gera o registro de pagamento para o novo mês
             gerarNovoPagamento(atleta);
         }
     }
@@ -69,7 +65,6 @@ public class PagamentoService {
         int diaVencimento = (atleta.getDiaVencimento() != null) ? atleta.getDiaVencimento() : 10;
         LocalDate vencimento = LocalDate.now().withDayOfMonth(diaVencimento);
 
-        // Se hoje já passou do dia de vencimento, agenda para o mês seguinte
         if (vencimento.isBefore(LocalDate.now())) {
             vencimento = vencimento.plusMonths(1);
         }
@@ -78,36 +73,43 @@ public class PagamentoService {
         pagamentoRepository.save(novoPagamento);
     }
 
+    /**
+     * CONFIRMAÇÃO DE PAGAMENTO (Versão Corrigida para Persistência)
+     * Busca o primeiro pagamento pendente e atualiza o status do atleta no banco.
+     */
     @Transactional
     public Pagamento confirmarPagamentoPeloAtleta(Long atletaId) {
-        LocalDate inicioMes = LocalDate.now().withDayOfMonth(1);
-        LocalDate fimMes = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
-
-        // CORREÇÃO: Usando isPago() para evitar erro de compilação do Lombok
+        // Buscamos o registro de pagamento pendente mais antigo/disponível
         Pagamento p = pagamentoRepository.findAll().stream()
                 .filter(pag -> pag.getAtleta().getId().equals(atletaId))
                 .filter(pag -> !pag.isPago())
-                .filter(pag -> !pag.getDataVencimento().isBefore(inicioMes) && !pag.getDataVencimento().isAfter(fimMes))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Nenhum pagamento pendente para este mês"));
+                .orElseThrow(() -> new RuntimeException("Nenhum pagamento pendente encontrado para o ID: " + atletaId));
 
+        // 1. Atualiza o registro do Pagamento
         p.setPago(true);
         p.setDataPagamento(LocalDate.now());
 
-        // PERSISTÊNCIA: Atualiza o status no Atleta para o Dashboard não zerar no F5
+        // 2. ATUALIZAÇÃO CRUCIAL: Muda o status no Atleta para persistir no Dashboard (F5)
         Atleta atleta = p.getAtleta();
         atleta.setStatusPagamento("EM_DIA");
         atletaRepository.save(atleta);
 
+        // 3. Salva o pagamento e retorna
         return pagamentoRepository.save(p);
     }
 
-    // Método antigo mantido por compatibilidade
     public Pagamento confirmarPagamento(Long pagamentoId) {
         Pagamento p = pagamentoRepository.findById(pagamentoId)
                 .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
         p.setPago(true);
         p.setDataPagamento(LocalDate.now());
+
+        // Garantindo que o status do atleta também mude aqui
+        Atleta atleta = p.getAtleta();
+        atleta.setStatusPagamento("EM_DIA");
+        atletaRepository.save(atleta);
+
         return pagamentoRepository.save(p);
     }
 }
