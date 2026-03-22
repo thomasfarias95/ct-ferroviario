@@ -31,7 +31,7 @@ public class PagamentoService {
         return pagamentoRepository.findByPagoFalseAndDataVencimentoBefore(LocalDate.now());
     }
 
-    @Scheduled(cron = "0 0 0 1 * ?")
+    /*@Scheduled(cron = "0 0 0 1 * ?")
     @Transactional
     public void renovarPagamentosMensais() {
         List<Atleta> atletasAtivos = atletaRepository.findAll()
@@ -44,7 +44,7 @@ public class PagamentoService {
             atletaRepository.saveAndFlush(atleta);
             gerarNovoPagamento(atleta);
         }
-    }
+    }*/
 
     public void criarPagamento(Long atletaId) {
         Atleta atleta = atletaRepository.findById(atletaId)
