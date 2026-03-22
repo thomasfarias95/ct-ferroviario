@@ -76,4 +76,26 @@ public class PagamentoService {
         p.setDataPagamento(LocalDate.now());
         return pagamentoRepository.save(p);
     }
+    public Pagamento confirmarPagamentoPeloAtleta(Long atletaId) {
+        // Busca o pagamento que NÃO está pago e que vence no mês atual para este atleta
+        LocalDate inicioMes = LocalDate.now().withDayOfMonth(1);
+        LocalDate fimMes = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
+
+        Pagamento p = pagamentoRepository.findAll().stream()
+                .filter(pag -> pag.getAtleta().getId().equals(atletaId))
+                .filter(pag -> !pag.isPago()) // Só os que não foram pagos
+                .filter(pag -> !pag.getDataVencimento().isBefore(inicioMes) && !pag.getDataVencimento().isAfter(fimMes))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Nenhum pagamento pendente encontrado para este mês"));
+
+        p.setPago(true);
+        p.setDataPagamento(LocalDate.now());
+
+        // Opcional: Atualiza o status no objeto Atleta também para facilitar a consulta
+        Atleta atleta = p.getAtleta();
+        atleta.setStatusPagamento("EM_DIA");
+        atletaRepository.save(atleta);
+
+        return pagamentoRepository.save(p);
+    }
 }
