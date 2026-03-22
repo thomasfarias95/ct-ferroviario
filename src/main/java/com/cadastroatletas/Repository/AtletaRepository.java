@@ -13,18 +13,24 @@ public interface AtletaRepository extends JpaRepository<Atleta, Long> {
 
     Optional<Atleta> findByEmail(String email);
 
+    // Retorna todos os atletas ativos (essencial para as listagens gerais)
+    List<Atleta> findByAtivoTrue();
+
+    // Filtra por turno, mas garante que só venham os ativos
     List<Atleta> findByTurnoAndAtivoTrue(String turno);
 
+    // Estatísticas para o Power BI: Apenas de quem está treinando (Ativos)
     @Query("SELECT a.sexo, COUNT(a) FROM Atleta a WHERE a.ativo = true GROUP BY a.sexo")
     List<Object[]> countAtletasBySexo();
 
-    @Query("SELECT EXTRACT(YEAR FROM a.dataNascimento), COUNT(a) FROM Atleta a GROUP BY EXTRACT(YEAR FROM a.dataNascimento)")
+    // Distribuição por idade (Ativos)
+    @Query("SELECT EXTRACT(YEAR FROM a.dataNascimento), COUNT(a) FROM Atleta a WHERE a.ativo = true GROUP BY EXTRACT(YEAR FROM a.dataNascimento)")
     List<Object[]> countAtletasByAnoNascimento();
 
-    // --- NOVA CONSULTA PARA AUTOMAÇÃO DE WHATSAPP ---
+    // --- AUTOMAÇÃO DE WHATSAPP (Ajustada para segurança) ---
     // Busca atletas ativos que vencem em X dias e que ainda não foram notificados hoje
-    @Query(value = "SELECT * FROM atletas WHERE ativo = true AND dia_vencimento = " +
-            "EXTRACT(DAY FROM (CURRENT_DATE + CAST(:dias || ' days' AS INTERVAL))) " +
+    @Query(value = "SELECT * FROM atletas WHERE ativo = true " +
+            "AND dia_vencimento = EXTRACT(DAY FROM (CURRENT_DATE + CAST(:dias || ' days' AS INTERVAL))) " +
             "AND (ultima_notificacao IS NULL OR ultima_notificacao < CURRENT_DATE)",
             nativeQuery = true)
     List<Atleta> findAtletasParaNotificar(@Param("dias") int dias);

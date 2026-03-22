@@ -2,46 +2,71 @@ package com.cadastroatletas.Controller;
 
 import com.cadastroatletas.Entity.Atleta;
 import com.cadastroatletas.Repository.AtletaRepository;
+import com.cadastroatletas.Service.AtletaService;
 import com.cadastroatletas.Service.PagamentoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/cadastro/atletas")
-@CrossOrigin(origins = "https://seu-projeto.vercel.app")
+@CrossOrigin(origins = "*")
 public class AtletaController {
 
     @Autowired
     private AtletaRepository atletaRepository;
 
     @Autowired
+    private AtletaService atletaService;
+
+    @Autowired
     private PagamentoService pagamentoService;
 
-    // Cadastro de novo Atleta/Aluno
     @PostMapping
     public ResponseEntity<Atleta> cadastrar(@RequestBody Atleta atleta) {
-        // Garante que novos cadastros comecem como Ativos
         atleta.setAtivo(true);
-
         Atleta atletaSalvo = atletaRepository.save(atleta);
-
-        // Cria o registro de pagamento (logística financeira manual)
         pagamentoService.criarPagamento(atletaSalvo.getId());
-
         return ResponseEntity.ok(atletaSalvo);
     }
 
-    // Listagem para os Gráficos (Dashboard)
     @GetMapping
     public List<Atleta> listarTodos() {
-        return atletaRepository.findAll();
+        return atletaRepository.findByAtivoTrue();
     }
 
-    // Listagem por Turno (Para a lista de chamada de Abril)
     @GetMapping("/turno/{turno}")
     public List<Atleta> listarPorTurno(@PathVariable String turno) {
         return atletaRepository.findByTurnoAndAtivoTrue(turno.toUpperCase());
+    }
+
+    @PatchMapping("/{id}/graduacao")
+    public ResponseEntity<Atleta> promover(@PathVariable Long id, @RequestBody String novaGraduacao) {
+        String graduacaoLimpa = novaGraduacao.replace("\"", "");
+        Atleta atualizado = atletaService.promoverAtleta(id, graduacaoLimpa);
+        return ResponseEntity.ok(atualizado);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Atleta> alterarStatus(@PathVariable Long id, @RequestParam boolean ativo) {
+        Atleta atualizado = atletaService.alterarStatusAtivo(id, ativo);
+        return ResponseEntity.ok(atualizado);
+    }
+
+    // --- DOWNLOAD DE PDF (AGORA COM CONTEÚDO REAL) ---
+    @GetMapping("/{id}/relatorio-pdf")
+    public ResponseEntity<byte[]> baixarRelatorioAtleta(@PathVariable Long id) {
+        // Agora chamamos o método que criamos no Service acima
+        byte[] pdfBytes = atletaService.gerarRelatorioPdf(id);
+
+        String nomeArquivo = "atleta_" + id + ".pdf";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nomeArquivo + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 }
