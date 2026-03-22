@@ -19,13 +19,17 @@ public class Atleta {
     private String papel;
     private String telefone;
     private LocalDate dataNascimento;
-    private String graduacao; // Ex: Branca, Azul, Preta (Shodan)
+    private String graduacao;
     private LocalDate dataUltimaGraduacao;
     private String turno;
     private String nomeResponsavel;
     private Boolean ativo = true;
     private Integer diaVencimento = 10;
+
+
+    @Column(name = "status_pagamento")
     private String statusPagamento;
+
     private String sexo;
     private LocalDate ultimaNotificacao;
 
@@ -64,7 +68,6 @@ public class Atleta {
     public String getGraduacao() { return graduacao; }
     public void setGraduacao(String graduacao) {
         this.graduacao = graduacao;
-        // Atualiza a data apenas se a graduação não for nula
         if (graduacao != null) {
             this.dataUltimaGraduacao = LocalDate.now();
         }
@@ -79,7 +82,6 @@ public class Atleta {
     public String getNomeResponsavel() { return nomeResponsavel; }
     public void setNomeResponsavel(String nomeResponsavel) { this.nomeResponsavel = nomeResponsavel; }
 
-    // AJUSTE: Usar getAtivo para garantir compatibilidade total com o JSON do Front-end
     public Boolean getAtivo() { return ativo; }
     public void setAtivo(Boolean ativo) { this.ativo = ativo; }
 
