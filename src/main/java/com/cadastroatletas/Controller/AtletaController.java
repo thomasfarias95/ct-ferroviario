@@ -13,7 +13,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/cadastro/atletas")
-@CrossOrigin(origins = "*")
+// Ajuste de CORS para permitir que o celular identifique o download
+@CrossOrigin(origins = "*", exposedHeaders = "Content-Disposition")
 public class AtletaController {
 
     @Autowired
@@ -33,9 +34,10 @@ public class AtletaController {
         return ResponseEntity.ok(atletaSalvo);
     }
 
+    // ALTERAÇÃO: Listar todos (Ativos e Inativos) para o Dashboard permitir a reativação
     @GetMapping
     public List<Atleta> listarTodos() {
-        return atletaRepository.findByAtivoTrue();
+        return atletaRepository.findAll();
     }
 
     @GetMapping("/turno/{turno}")
@@ -56,17 +58,17 @@ public class AtletaController {
         return ResponseEntity.ok(atualizado);
     }
 
-    // --- DOWNLOAD DE PDF (AGORA COM CONTEÚDO REAL) ---
     @GetMapping("/{id}/relatorio-pdf")
     public ResponseEntity<byte[]> baixarRelatorioAtleta(@PathVariable Long id) {
-        // Agora chamamos o método que criamos no Service acima
         byte[] pdfBytes = atletaService.gerarRelatorioPdf(id);
 
-        String nomeArquivo = "atleta_" + id + ".pdf";
+        // Nome do arquivo sanitizado para evitar problemas em navegadores mobile
+        String nomeArquivo = "Relatorio_Atleta_" + id + ".pdf";
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nomeArquivo + "\"")
                 .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(pdfBytes.length)
                 .body(pdfBytes);
     }
 }

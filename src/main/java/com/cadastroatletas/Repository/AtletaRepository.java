@@ -13,8 +13,11 @@ public interface AtletaRepository extends JpaRepository<Atleta, Long> {
 
     Optional<Atleta> findByEmail(String email);
 
-    // Retorna todos os atletas ativos (essencial para as listagens gerais)
+    // Mantemos para listagens rápidas de treino
     List<Atleta> findByAtivoTrue();
+
+    // Novo: Permite buscar apenas os inativos se precisar (útil para auditoria)
+    List<Atleta> findByAtivoFalse();
 
     // Filtra por turno, mas garante que só venham os ativos
     List<Atleta> findByTurnoAndAtivoTrue(String turno);
@@ -27,7 +30,7 @@ public interface AtletaRepository extends JpaRepository<Atleta, Long> {
     @Query("SELECT EXTRACT(YEAR FROM a.dataNascimento), COUNT(a) FROM Atleta a WHERE a.ativo = true GROUP BY EXTRACT(YEAR FROM a.dataNascimento)")
     List<Object[]> countAtletasByAnoNascimento();
 
-    // --- AUTOMAÇÃO DE WHATSAPP (Ajustada para segurança) ---
+    // --- AUTOMAÇÃO DE WHATSAPP ---
     // Busca atletas ativos que vencem em X dias e que ainda não foram notificados hoje
     @Query(value = "SELECT * FROM atletas WHERE ativo = true " +
             "AND dia_vencimento = EXTRACT(DAY FROM (CURRENT_DATE + CAST(:dias || ' days' AS INTERVAL))) " +

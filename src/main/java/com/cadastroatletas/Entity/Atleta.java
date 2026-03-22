@@ -20,10 +20,10 @@ public class Atleta {
     private String telefone;
     private LocalDate dataNascimento;
     private String graduacao; // Ex: Branca, Azul, Preta (Shodan)
-    private LocalDate dataUltimaGraduacao; // Novo campo para histórico
+    private LocalDate dataUltimaGraduacao;
     private String turno;
     private String nomeResponsavel;
-    private Boolean ativo = true; // Fundamental para o filtro de mensagens
+    private Boolean ativo = true;
     private Integer diaVencimento = 10;
     private String statusPagamento;
     private String sexo;
@@ -35,7 +35,7 @@ public class Atleta {
 
     public Atleta() {}
 
-    // --- Getters e Setters Atualizados ---
+    // --- Getters e Setters ---
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -64,8 +64,10 @@ public class Atleta {
     public String getGraduacao() { return graduacao; }
     public void setGraduacao(String graduacao) {
         this.graduacao = graduacao;
-        // Toda vez que setar uma nova graduação, ele pode atualizar a data automaticamente
-        this.dataUltimaGraduacao = LocalDate.now();
+        // Atualiza a data apenas se a graduação não for nula
+        if (graduacao != null) {
+            this.dataUltimaGraduacao = LocalDate.now();
+        }
     }
 
     public LocalDate getDataUltimaGraduacao() { return dataUltimaGraduacao; }
@@ -77,7 +79,8 @@ public class Atleta {
     public String getNomeResponsavel() { return nomeResponsavel; }
     public void setNomeResponsavel(String nomeResponsavel) { this.nomeResponsavel = nomeResponsavel; }
 
-    public Boolean isAtivo() { return ativo; }
+    // AJUSTE: Usar getAtivo para garantir compatibilidade total com o JSON do Front-end
+    public Boolean getAtivo() { return ativo; }
     public void setAtivo(Boolean ativo) { this.ativo = ativo; }
 
     public Integer getDiaVencimento() { return diaVencimento; }

@@ -21,8 +21,10 @@ public class AtletaService {
     public Atleta promoverAtleta(Long id, String novaGraduacao) {
         Atleta atleta = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
+
+        // O método setGraduacao na Entity já atualiza a data, mas garantimos aqui também
         atleta.setGraduacao(novaGraduacao);
-        atleta.setDataUltimaGraduacao(LocalDate.now()); // Atualiza a data da troca
+        atleta.setDataUltimaGraduacao(LocalDate.now());
         return repository.save(atleta);
     }
 
@@ -34,7 +36,6 @@ public class AtletaService {
         return repository.save(atleta);
     }
 
-    // MÉTODO REVISADO COM A LINHA DE SEGURANÇA PARA O NOME
     public byte[] gerarRelatorioPdf(Long id) {
         Atleta atleta = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
@@ -44,25 +45,33 @@ public class AtletaService {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            document.add(new Paragraph("RELATÓRIO TÉCNICO - CT FERROVIÁRIO"));
+            document.add(new Paragraph("CT FERROVIÁRIO DE JUDÔ - RELATÓRIO TÉCNICO"));
             document.add(new Paragraph("--------------------------------------------------"));
 
-            // LINHA SOLICITADA: Validação para evitar NullPointerException no PDF
-            // Tenta usar getNomeCompleto(), se for nulo tenta getNome(), se ambos nulos diz "Não informado"
-            String nomeExibicao = (atleta.getNomeCompleto() != null) ? atleta.getNomeCompleto() :
-                    (atleta.getNome() != null ? atleta.getNome() : "Não informado");
+            // Validação de Nome (Prioriza Nome Completo, depois Nome, depois ID)
+            String nomeExibicao = (atleta.getNomeCompleto() != null && !atleta.getNomeCompleto().isEmpty())
+                    ? atleta.getNomeCompleto() :
+                    (atleta.getNome() != null ? atleta.getNome() : "Atleta ID: " + id);
 
             document.add(new Paragraph("Nome: " + nomeExibicao));
-
             document.add(new Paragraph("Graduação: " + (atleta.getGraduacao() != null ? atleta.getGraduacao() : "Branca")));
-            document.add(new Paragraph("Status: " + (atleta.isAtivo() ? "ATIVO" : "INATIVO")));
+
+            // Ajuste para usar o getAtivo() que definimos na Entity
+            boolean statusAtivo = (atleta.getAtivo() != null) ? atleta.getAtivo() : false;
+            document.add(new Paragraph("Status: " + (statusAtivo ? "ATIVO" : "INATIVO")));
+
+            document.add(new Paragraph("Última Graduação: " +
+                    (atleta.getDataUltimaGraduacao() != null ? atleta.getDataUltimaGraduacao() : "Não registrada")));
+
             document.add(new Paragraph("Data de Emissão: " + LocalDate.now()));
             document.add(new Paragraph("--------------------------------------------------"));
-            document.add(new Paragraph("Oss!"));
+            document.add(new Paragraph("\nOss!"));
 
             document.close();
             return out.toByteArray();
         } catch (Exception e) {
+            // Log no console do Render para facilitar o debug se der erro
+            System.err.println("Erro ao gerar PDF: " + e.getMessage());
             throw new RuntimeException("Erro ao gerar o PDF do atleta " + id, e);
         }
     }
