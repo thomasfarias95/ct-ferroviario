@@ -21,24 +21,21 @@ public class PagamentoService {
     @Autowired
     private AtletaRepository atletaRepository;
 
-    // Listar quem está com o boleto vencendo em X dias
     public List<Pagamento> listarVencimentosProximos(int dias) {
         LocalDate dataLimite = LocalDate.now().plusDays(dias);
         return pagamentoRepository.findByPagoFalseAndDataVencimentoLessThanEqual(dataLimite);
     }
 
-    // Listar quem já passou do vencimento e não pagou (Inadimplentes)
     public List<Pagamento> listarInadimplentes() {
         return pagamentoRepository.findByPagoFalseAndDataVencimentoBefore(LocalDate.now());
     }
 
-    // AUTOMAÇÃO: Gera uma NOVA linha na tabela para cada aluno ativo no dia 1º
     @Scheduled(cron = "0 0 0 1 * ?")
     public void renovarPagamentosMensais() {
-        // Buscamos os atletas (quem gera a mensalidade é o Atleta Ativo, não o pagamento antigo)
+        // CORREÇÃO: Usando getAtivo() e garantindo que não seja nulo antes de filtrar
         List<Atleta> atletasAtivos = atletaRepository.findAll()
                 .stream()
-                .filter(Atleta::isAtivo) // Supondo que adicionamos o campo 'ativo' na Entity
+                .filter(atleta -> atleta.getAtivo() != null && atleta.getAtivo())
                 .toList();
 
         for (Atleta atleta : atletasAtivos) {
@@ -46,7 +43,6 @@ public class PagamentoService {
         }
     }
 
-    // Criar o primeiro pagamento ao cadastrar um novo atleta
     public void criarPagamento(Long atletaId) {
         Atleta atleta = atletaRepository.findById(atletaId)
                 .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
@@ -54,17 +50,16 @@ public class PagamentoService {
         gerarNovoPagamento(atleta);
     }
 
-    // Método auxiliar para centralizar a regra de negócio
     private void gerarNovoPagamento(Atleta atleta) {
         Pagamento novoPagamento = new Pagamento();
         novoPagamento.setAtleta(atleta);
-        novoPagamento.setValor(new BigDecimal("100.00")); // Valor padrão do CT
+        novoPagamento.setValor(new BigDecimal("100.00"));
         novoPagamento.setPago(false);
 
-        // Define o vencimento com base no dia escolhido (ex: dia 10 de cada mês)
-        LocalDate vencimento = LocalDate.now().withDayOfMonth(atleta.getDiaVencimento());
+        // Segurança: Se o dia de vencimento for nulo na Entity, assume dia 10
+        int diaVencimento = (atleta.getDiaVencimento() != null) ? atleta.getDiaVencimento() : 10;
+        LocalDate vencimento = LocalDate.now().withDayOfMonth(diaVencimento);
 
-        // Se hoje já passou do dia de vencimento, coloca para o mês que vem
         if (vencimento.isBefore(LocalDate.now())) {
             vencimento = vencimento.plusMonths(1);
         }
@@ -73,13 +68,12 @@ public class PagamentoService {
         pagamentoRepository.save(novoPagamento);
     }
 
-    // MÉTODO PARA O BOTÃO DE "DAR BAIXA" (O que você vai usar no Front)
     public Pagamento confirmarPagamento(Long pagamentoId) {
         Pagamento p = pagamentoRepository.findById(pagamentoId)
                 .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
 
         p.setPago(true);
-        p.setDataPagamento(LocalDate.now()); // Registra o dia que o dinheiro entrou
+        p.setDataPagamento(LocalDate.now());
         return pagamentoRepository.save(p);
     }
 }
