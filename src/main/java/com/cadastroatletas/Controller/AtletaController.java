@@ -10,6 +10,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 
+// Imports do iText para geração de PDF real
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.properties.TextAlignment;
+
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 @RestController
@@ -24,57 +32,80 @@ public class AtletaController {
     @Autowired
     private PagamentoService pagamentoService;
 
-    // Listagem principal para o Dashboard
     @GetMapping
     public ResponseEntity<List<Atleta>> listarTodos() {
         return ResponseEntity.ok(atletaRepository.findAll());
     }
 
-    // Endpoint do "Ovo de Ouro": Baixa de pagamento e Ativação/Desativação
     @PatchMapping("/{id}")
-    public ResponseEntity<?> atualizarStatusPagamento(@PathVariable Long id, @RequestBody Atleta dados) {
+    public ResponseEntity<?> atualizarAtleta(@PathVariable Long id, @RequestBody Atleta dados) {
         try {
-            // Se o front enviar EM_DIA, aciona a regra de negócio do PagamentoService
             if (dados.getStatusPagamento() != null && "EM_DIA".equals(dados.getStatusPagamento())) {
                 pagamentoService.confirmarPagamentoPeloAtleta(id);
                 return ResponseEntity.ok().build();
             }
 
-            // Lógica para ativar/desativar atleta (Botão SUSPENDER/ATIVAR)
             return atletaRepository.findById(id)
                     .map(atleta -> {
-                        if (dados.getAtivo() != null) {
-                            atleta.setAtivo(dados.getAtivo());
-                        }
+                        if (dados.getAtivo() != null) atleta.setAtivo(dados.getAtivo());
+                        if (dados.getGraduacao() != null) atleta.setGraduacao(dados.getGraduacao());
                         atletaRepository.saveAndFlush(atleta);
                         return ResponseEntity.ok().build();
                     }).orElse(ResponseEntity.notFound().build());
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body("Erro interno no servidor: " + e.getMessage());
+            return ResponseEntity.status(500).body("Erro interno: " + e.getMessage());
         }
     }
 
-    // ROTA DO PDF TÉCNICO (Resolve o Erro 404 do botão 🥋)
     @GetMapping("/{id}/relatorio-pdf")
     public ResponseEntity<byte[]> gerarRelatorioPdf(@PathVariable Long id) {
         try {
             Atleta atleta = atletaRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
 
-            // Aqui você deve chamar sua lógica de PDF.
-            // Exemplo genérico:
-            byte[] pdfBytes = "Relatorio Tecnico do Atleta".getBytes(); // Substituir pela lógica real de PDF
+            // Prepara o fluxo de bytes para o PDF real
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+
+            // Montando o conteúdo do documento
+            document.add(new Paragraph("CT FERROVIÁRIO - FICHA TÉCNICA")
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setBold()
+                    .setFontSize(20));
+
+            document.add(new Paragraph("\n")); // Espaçamento
+            document.add(new Paragraph("Nome do Atleta: " + (atleta.getNomeCompleto() != null ? atleta.getNomeCompleto() : atleta.getNome())));
+            document.add(new Paragraph("Graduação atual: " + atleta.getGraduacao()));
+            document.add(new Paragraph("Turno: " + atleta.getTurno()));
+            document.add(new Paragraph("Situação: " + (atleta.getAtivo() != false ? "ATIVO" : "INATIVO")));
+            document.add(new Paragraph("Vencimento Mensalidade: Dia " + (atleta.getDiaVencimento() != null ? atleta.getDiaVencimento() : "28")));
+
+            document.add(new Paragraph("\n\n__________________________________")
+                    .setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("Assinatura do Sensei")
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setFontSize(10));
+
+            document.close();
+            byte[] pdfBytes = baos.toByteArray();
+
+            // Configura os headers para o navegador entender que é um PDF
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "Ficha_Tecnica_" + atleta.getNome() + ".pdf");
+            headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
 
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=relatorio_" + atleta.getId() + ".pdf")
-                    .contentType(MediaType.APPLICATION_PDF)
+                    .headers(headers)
                     .body(pdfBytes);
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(404).build();
+            return ResponseEntity.status(500).build();
         }
     }
 }
