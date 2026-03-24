@@ -1,61 +1,46 @@
+⚙️ CT Ferroviário - API Engine (Spring Boot)
+Este repositório contém a inteligência e o motor de persistência do Sistema de Gestão do CT Ferroviário. Uma API REST robusta desenvolvida para centralizar a lógica de negócios, automações financeiras e geração de documentos oficiais para o dojo.
 
+🧠 Diferenciais Técnicos & Lógica de Negócio
+O projeto vai além de um CRUD básico, implementando soluções de engenharia para problemas reais de gestão:
 
-🥋 Sistema de Gestão - CT Ferroviário de Judô
-Sistema full-stack desenvolvido para automatizar a gestão de atletas e o controle financeiro do CT Ferroviário de Judô. O projeto substitui processos manuais por uma interface moderna, com automação de mensalidades e indicadores visuais de inadimplência.
+📄 Engine de PDF (iText 7): Geração dinâmica de Fichas Técnicas em memória (ByteArrayOutputStream). Os documentos são servidos via streaming de bytes, garantindo performance e segurança sem ocupação de disco no servidor.
 
-🚀 Funcionalidades
-Gestão de Atletas: Cadastro completo de alunos com persistência em banco de dados relacional.
+⏰ Automação de Mensalidades (Cron Jobs): Implementação de Spring Scheduling para rotinas automáticas todo dia 01, renovando o status financeiro de todos os atletas ativos e gerando novos lançamentos.
 
-Controle Financeiro Inteligente:
+⚡ Consultas Otimizadas (Performance): Uso de JOIN FETCH em JPQL para mitigar o problema de N+1 queries, além de Queries Derivadas para buscas de alta performance no banco PostgreSQL.
 
-Listagem dinâmica de pagamentos pendentes e realizados.
+🔄 Sincronização de Estado: Lógica de serviço que garante a integridade entre a tabela de Pagamentos e o status de exibição no Atleta, resolvendo problemas de inconsistência de dados.
 
-Automação (Cron Job): Geração automática de mensalidades para todos os atletas no dia 01 de cada mês.
+🛠️ Stack Tecnológica
+Linguagem: Java 21 (LTS)
 
-Indicadores Visuais: Destaque automático em vermelho para mensalidades atrasadas.
+Framework: Spring Boot 3.x
 
-Dashboard Sensei: Painel com métricas rápidas (Total de Atletas, Alunos em Dia e Inadimplentes).
+Persistência: Spring Data JPA / Hibernate
 
-Segurança: Sistema de login para acesso restrito ao painel administrativo.
+Banco de Dados: PostgreSQL (Produção no Render)
 
-🛠️ Tecnologias Utilizadas
-Backend
-Java 21 com Spring Boot 3
+Gerador de Documentos: iText PDF 7
 
-Spring Data JPA (Persistência de dados)
+Gerenciador de Dependências: Maven
 
-PostgreSQL (Banco de dados relacional)
+<img width="485" height="270" alt="image" src="https://github.com/user-attachments/assets/58a61c23-01b6-4a9c-ae4d-df3fbcbf6ff4" />
 
-Spring Scheduling (Automação de tarefas)
+🏗️ Arquitetura & Integração
+A API foi desenhada seguindo o padrão de camadas (Controller -> Service -> Repository), garantindo que a regra de negócio (como o cálculo de vencimento) fique isolada da exposição dos dados.
 
-Frontend
-Next.js 15
+CORS: Configurado para permitir integração segura com o Front-end em Next.js.
 
-TypeScript
+Transactional: Uso rigoroso de @Transactional para garantir a atomicidade das operações financeiras.
 
-Tailwind CSS (Estilização responsiva)
+📈 O que vem por aí?
+[ ] Integração com API do WhatsApp para notificações de cobrança.
 
-Fetch API (Consumo de API REST)
+[ ] Dashboards estatísticos de faturamento mensal.
 
-🏗️ Arquitetura do Banco de Dados
-O sistema utiliza um relacionamento de Um-para-Muitos (1:N) entre Atletas e Pagamentos, garantindo a integridade dos dados e o histórico financeiro individual.
+[ ] Autenticação via JWT para múltiplos níveis de acesso (Admin/Professor).
 
-🔧 Como Executar o Projeto
-Pré-requisitos
-JDK 17 ou superior
-
-Node.js 18 ou superior
-
-PostgreSQL rodando localmente
-
-
-
-📈 Próximas Implementações
-[ ] Envio automático de lembretes de pagamento via WhatsApp.
-
-[ ] Geração de relatórios mensais em PDF.
-
-[ ] Portal do Aluno para consulta de graduação e histórico de treinos.
 
 👤 Autor
-Thomas Profissional de Logística & Estudante de Ciência da Computação LinkedIn | Portfólio
+Thomas Farias Logística & Procurement Professional | Graduando em Ciência da Computação
