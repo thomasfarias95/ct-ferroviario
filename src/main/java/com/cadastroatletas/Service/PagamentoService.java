@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,15 +24,18 @@ public class PagamentoService {
     @Autowired
     private AtletaRepository atletaRepository;
 
+    // LISTAR VENCIMENTOS PRÓXIMOS
     public List<Pagamento> listarVencimentosProximos(int dias) {
         LocalDate dataLimite = LocalDate.now().plusDays(dias);
         return pagamentoRepository.findByPagoFalseAndDataVencimentoLessThanEqual(dataLimite);
     }
 
+    // LISTAR QUEM ESTÁ ATRASADO
     public List<Pagamento> listarInadimplentes() {
         return pagamentoRepository.findByPagoFalseAndDataVencimentoBefore(LocalDate.now());
     }
 
+    // ROTINA AUTOMÁTICA: Todo dia 1º do mês vira tudo para PENDENTE
     @Scheduled(cron = "0 0 0 1 * ?")
     @Transactional
     public void renovarPagamentosMensais() {
@@ -47,22 +51,25 @@ public class PagamentoService {
         }
     }
 
-    public void criarPagamento(Long atletaId) {
-        Atleta atleta = atletaRepository.findById(atletaId)
-                .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
-        gerarNovoPagamento(atleta);
-    }
-
-    private void gerarNovoPagamento(Atleta atleta) {
+    // GERAÇÃO DE NOVO LANÇAMENTO FINANCEIRO
+    @Transactional
+    public void gerarNovoPagamento(Atleta atleta) {
         Pagamento novoPagamento = new Pagamento();
         novoPagamento.setAtleta(atleta);
-        novoPagamento.setValor(new BigDecimal("100.00"));
+        novoPagamento.setValor(new BigDecimal("100.00")); // Valor padrão da mensalidade do CT
         novoPagamento.setPago(false);
 
         int diaVencimento = (atleta.getDiaVencimento() != null) ? atleta.getDiaVencimento() : 10;
-        LocalDate vencimento = LocalDate.now().withDayOfMonth(diaVencimento);
+        LocalDate hoje = LocalDate.now();
 
-        if (vencimento.isBefore(LocalDate.now())) {
+        // Proteção contra dias inexistentes (ex: dia 31 em fevereiro)
+        int ultimoDiaMes = hoje.with(TemporalAdjusters.lastDayOfMonth()).getDayOfMonth();
+        int diaAjustado = Math.min(diaVencimento, ultimoDiaMes);
+
+        LocalDate vencimento = hoje.withDayOfMonth(diaAjustado);
+
+        // Se o dia de vencimento já passou este mês, lança para o próximo
+        if (vencimento.isBefore(hoje)) {
             vencimento = vencimento.plusMonths(1);
         }
 
@@ -70,19 +77,19 @@ public class PagamentoService {
         pagamentoRepository.saveAndFlush(novoPagamento);
     }
 
+    // CONFIRMAÇÃO DE PAGAMENTO (USADO PELO DASHBOARD)
     @Transactional
-    public Pagamento confirmarPagamentoPeloAtleta(Long atletaId) {
-        // 1. Busca o atleta
+    public void confirmarPagamentoPeloAtleta(Long atletaId) {
         Atleta atleta = atletaRepository.findById(atletaId)
                 .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
 
-        // 2. Busca o pagamento pendente com proteção contra nulos
+        // Busca o pagamento em aberto mais antigo deste atleta (Otimizado)
+        // Nota: Ideal ter um método findFirstByAtletaIdAndPagoFalse no Repository
         Optional<Pagamento> pagamentoPendente = pagamentoRepository.findAll().stream()
                 .filter(pag -> pag.getAtleta() != null && pag.getAtleta().getId().equals(atletaId))
                 .filter(pag -> !pag.isPago())
                 .findFirst();
 
-        // Se encontrar, atualiza. Se não encontrar (ex: já está pago), apenas garante que o Atleta está EM_DIA
         if (pagamentoPendente.isPresent()) {
             Pagamento p = pagamentoPendente.get();
             p.setPago(true);
@@ -90,13 +97,12 @@ public class PagamentoService {
             pagamentoRepository.saveAndFlush(p);
         }
 
-        // 3. Garante o status no Atleta (Isso resolve o problema do F5)
+        // Sincroniza o status no objeto Atleta para o Front-End
         atleta.setStatusPagamento("EM_DIA");
         atletaRepository.saveAndFlush(atleta);
-
-        return pagamentoPendente.orElse(null);
     }
 
+    // CONFIRMAÇÃO POR ID DO TÍTULO
     @Transactional
     public Pagamento confirmarPagamento(Long pagamentoId) {
         Pagamento p = pagamentoRepository.findById(pagamentoId)
@@ -106,10 +112,9 @@ public class PagamentoService {
         p.setDataPagamento(LocalDate.now());
         pagamentoRepository.saveAndFlush(p);
 
-        Atleta atleta = p.getAtleta();
-        if (atleta != null) {
-            atleta.setStatusPagamento("EM_DIA");
-            atletaRepository.saveAndFlush(atleta);
+        if (p.getAtleta() != null) {
+            p.getAtleta().setStatusPagamento("EM_DIA");
+            atletaRepository.saveAndFlush(p.getAtleta());
         }
 
         return p;

@@ -9,8 +9,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
-
-// Imports do iText para geração de PDF real
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
@@ -22,8 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/cadastro/atletas")
-@CrossOrigin("*")
-@Transactional
+@CrossOrigin("*") // Permite que o Next.js acesse o Spring Boot
 public class AtletaController {
 
     @Autowired
@@ -32,19 +29,24 @@ public class AtletaController {
     @Autowired
     private PagamentoService pagamentoService;
 
+    // LISTAR TODOS
     @GetMapping
     public ResponseEntity<List<Atleta>> listarTodos() {
         return ResponseEntity.ok(atletaRepository.findAll());
     }
 
+    // ATUALIZAR STATUS OU PAGAMENTO (PATCH)
     @PatchMapping("/{id}")
+    @Transactional
     public ResponseEntity<?> atualizarAtleta(@PathVariable Long id, @RequestBody Atleta dados) {
         try {
+            // Se o front enviar statusPagamento como 'EM_DIA', aciona o serviço de pagamento
             if (dados.getStatusPagamento() != null && "EM_DIA".equals(dados.getStatusPagamento())) {
                 pagamentoService.confirmarPagamentoPeloAtleta(id);
                 return ResponseEntity.ok().build();
             }
 
+            // Caso contrário, atualiza campos específicos (Ativo/Inativo ou Graduação)
             return atletaRepository.findById(id)
                     .map(atleta -> {
                         if (dados.getAtivo() != null) atleta.setAtivo(dados.getAtivo());
@@ -59,48 +61,57 @@ public class AtletaController {
         }
     }
 
+    // GERAR FICHA TÉCNICA EM PDF
     @GetMapping("/{id}/relatorio-pdf")
     public ResponseEntity<byte[]> gerarRelatorioPdf(@PathVariable Long id) {
         try {
             Atleta atleta = atletaRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
 
-            // Prepara o fluxo de bytes para o PDF real
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
 
-            // Montando o conteúdo do documento
+            // Título Principal
             document.add(new Paragraph("CT FERROVIÁRIO - FICHA TÉCNICA")
                     .setTextAlignment(TextAlignment.CENTER)
                     .setBold()
-                    .setFontSize(20));
+                    .setFontSize(22));
 
-            document.add(new Paragraph("\n")); // Espaçamento
-            document.add(new Paragraph("Nome do Atleta: " + (atleta.getNomeCompleto() != null ? atleta.getNomeCompleto() : atleta.getNome())));
-            document.add(new Paragraph("Graduação atual: " + atleta.getGraduacao()));
-            document.add(new Paragraph("Turno: " + atleta.getTurno()));
-            document.add(new Paragraph("Situação: " + (atleta.getAtivo() != false ? "ATIVO" : "INATIVO")));
-            document.add(new Paragraph("Vencimento Mensalidade: Dia " + (atleta.getDiaVencimento() != null ? atleta.getDiaVencimento() : "28")));
-
-            document.add(new Paragraph("\n\n__________________________________")
+            document.add(new Paragraph("__________________________________________________________")
                     .setTextAlignment(TextAlignment.CENTER));
-            document.add(new Paragraph("Assinatura do Sensei")
+
+            document.add(new Paragraph("\n"));
+
+            // Informações do Atleta
+            document.add(new Paragraph("DADOS CADASTRAIS").setBold().setFontSize(14));
+            document.add(new Paragraph("Nome Completo: " + (atleta.getNomeCompleto() != null ? atleta.getNomeCompleto() : atleta.getNome())));
+            document.add(new Paragraph("Graduação: " + atleta.getGraduacao()));
+            document.add(new Paragraph("Turno de Treino: " + atleta.getTurno()));
+            document.add(new Paragraph("Status de Matrícula: " + (atleta.getAtivo() != false ? "ATIVA" : "SUSPENSA")));
+            document.add(new Paragraph("Dia de Vencimento: Dia " + (atleta.getDiaVencimento() != null ? atleta.getDiaVencimento() : "10")));
+            document.add(new Paragraph("Situação Financeira: " + (atleta.getStatusPagamento() != null ? atleta.getStatusPagamento() : "PENDENTE")));
+
+            // Espaço para assinatura
+            document.add(new Paragraph("\n\n\n\n_________________________________________")
+                    .setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("Assinatura do Responsável / Sensei")
                     .setTextAlignment(TextAlignment.CENTER)
-                    .setFontSize(10));
+                    .setFontSize(10)
+                    .setItalic());
 
             document.close();
             byte[] pdfBytes = baos.toByteArray();
 
-            // Configura os headers para o navegador entender que é um PDF
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "Ficha_Tecnica_" + atleta.getNome() + ".pdf");
-            headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
+            // Headers para forçar o download com nome correto
+            String nomeLimpo = (atleta.getNome() != null ? atleta.getNome() : "Atleta").replaceAll("\\s+", "_");
+            String fileName = "Ficha_" + nomeLimpo + ".pdf";
 
             return ResponseEntity.ok()
-                    .headers(headers)
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
                     .body(pdfBytes);
 
         } catch (Exception e) {
