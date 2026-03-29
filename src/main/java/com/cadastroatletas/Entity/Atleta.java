@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(name = "atletas")
@@ -19,13 +20,16 @@ public class Atleta {
     private String papel;
     private String telefone;
     private LocalDate dataNascimento;
+
+    // Aumentado o tamanho para suportar nomes como "PRETA 1º DAN"
+    @Column(length = 50)
     private String graduacao;
+
     private LocalDate dataUltimaGraduacao;
     private String turno;
     private String nomeResponsavel;
     private Boolean ativo = true;
     private Integer diaVencimento = 10;
-
 
     @Column(name = "status_pagamento")
     private String statusPagamento;
@@ -66,11 +70,13 @@ public class Atleta {
     public void setDataNascimento(LocalDate dataNascimento) { this.dataNascimento = dataNascimento; }
 
     public String getGraduacao() { return graduacao; }
+
+    // Lógica inteligente: Só atualiza a data se a faixa REALMENTE mudar
     public void setGraduacao(String graduacao) {
-        this.graduacao = graduacao;
-        if (graduacao != null) {
+        if (graduacao != null && !Objects.equals(this.graduacao, graduacao)) {
             this.dataUltimaGraduacao = LocalDate.now();
         }
+        this.graduacao = graduacao;
     }
 
     public LocalDate getDataUltimaGraduacao() { return dataUltimaGraduacao; }

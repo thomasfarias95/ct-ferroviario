@@ -20,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/cadastro/atletas")
-@CrossOrigin("*") // Permite que o Next.js acesse o Spring Boot
+@CrossOrigin("*")
 public class AtletaController {
 
     @Autowired
@@ -29,31 +29,37 @@ public class AtletaController {
     @Autowired
     private PagamentoService pagamentoService;
 
-    // LISTAR TODOS
     @GetMapping
     public ResponseEntity<List<Atleta>> listarTodos() {
         return ResponseEntity.ok(atletaRepository.findAll());
     }
 
-    // ATUALIZAR STATUS OU PAGAMENTO (PATCH)
     @PatchMapping("/{id}")
     @Transactional
     public ResponseEntity<?> atualizarAtleta(@PathVariable Long id, @RequestBody Atleta dados) {
         try {
-            // Se o front enviar statusPagamento como 'EM_DIA', aciona o serviço de pagamento
+            Atleta atleta = atletaRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Atleta não encontrado"));
+
+            // 1. Processa Pagamento (se enviado)
             if (dados.getStatusPagamento() != null && "EM_DIA".equals(dados.getStatusPagamento())) {
                 pagamentoService.confirmarPagamentoPeloAtleta(id);
-                return ResponseEntity.ok().build();
+                // Após o serviço, recarregamos o atleta para garantir que temos os dados pós-pagamento
+                atleta = atletaRepository.findById(id).get();
             }
 
-            // Caso contrário, atualiza campos específicos (Ativo/Inativo ou Graduação)
-            return atletaRepository.findById(id)
-                    .map(atleta -> {
-                        if (dados.getAtivo() != null) atleta.setAtivo(dados.getAtivo());
-                        if (dados.getGraduacao() != null) atleta.setGraduacao(dados.getGraduacao());
-                        atletaRepository.saveAndFlush(atleta);
-                        return ResponseEntity.ok().build();
-                    }).orElse(ResponseEntity.notFound().build());
+            // 2. Processa Status Ativo/Inativo
+            if (dados.getAtivo() != null) {
+                atleta.setAtivo(dados.getAtivo());
+            }
+
+            // 3. Processa Graduação (Aciona a lógica de data automática que criamos na Entity)
+            if (dados.getGraduacao() != null) {
+                atleta.setGraduacao(dados.getGraduacao());
+            }
+
+            atletaRepository.saveAndFlush(atleta);
+            return ResponseEntity.ok().build();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -61,7 +67,6 @@ public class AtletaController {
         }
     }
 
-    // GERAR FICHA TÉCNICA EM PDF
     @GetMapping("/{id}/relatorio-pdf")
     public ResponseEntity<byte[]> gerarRelatorioPdf(@PathVariable Long id) {
         try {
@@ -73,7 +78,6 @@ public class AtletaController {
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
 
-            // Título Principal
             document.add(new Paragraph("CT FERROVIÁRIO - FICHA TÉCNICA")
                     .setTextAlignment(TextAlignment.CENTER)
                     .setBold()
@@ -84,7 +88,6 @@ public class AtletaController {
 
             document.add(new Paragraph("\n"));
 
-            // Informações do Atleta
             document.add(new Paragraph("DADOS CADASTRAIS").setBold().setFontSize(14));
             document.add(new Paragraph("Nome Completo: " + (atleta.getNomeCompleto() != null ? atleta.getNomeCompleto() : atleta.getNome())));
             document.add(new Paragraph("Graduação: " + atleta.getGraduacao()));
@@ -93,7 +96,6 @@ public class AtletaController {
             document.add(new Paragraph("Dia de Vencimento: Dia " + (atleta.getDiaVencimento() != null ? atleta.getDiaVencimento() : "10")));
             document.add(new Paragraph("Situação Financeira: " + (atleta.getStatusPagamento() != null ? atleta.getStatusPagamento() : "PENDENTE")));
 
-            // Espaço para assinatura
             document.add(new Paragraph("\n\n\n\n_________________________________________")
                     .setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("Assinatura do Responsável / Sensei")
@@ -104,7 +106,6 @@ public class AtletaController {
             document.close();
             byte[] pdfBytes = baos.toByteArray();
 
-            // Headers para forçar o download com nome correto
             String nomeLimpo = (atleta.getNome() != null ? atleta.getNome() : "Atleta").replaceAll("\\s+", "_");
             String fileName = "Ficha_" + nomeLimpo + ".pdf";
 
