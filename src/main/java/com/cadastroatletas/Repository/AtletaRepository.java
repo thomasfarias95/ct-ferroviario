@@ -4,25 +4,26 @@ import com.cadastroatletas.Entity.Atleta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Repository;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface AtletaRepository extends JpaRepository<Atleta, Long> {
 
-    Optional<Atleta> findByEmail(String email);
+    // AJUSTE PARA SEGURANÇA: Retorna UserDetails diretamente para o SecurityFilter
+    UserDetails findByEmail(String email);
 
     // Mantemos para listagens rápidas de treino
     List<Atleta> findByAtivoTrue();
 
-    // Novo: Permite buscar apenas os inativos se precisar (útil para auditoria)
+    // Útil para auditoria de alunos que saíram
     List<Atleta> findByAtivoFalse();
 
-    // Filtra por turno, mas garante que só venham os ativos
+    // Filtra por turno para organizar as aulas
     List<Atleta> findByTurnoAndAtivoTrue(String turno);
 
-    // Estatísticas para o Power BI: Apenas de quem está treinando (Ativos)
+    // Estatísticas para o Power BI: Apenas ativos
     @Query("SELECT a.sexo, COUNT(a) FROM Atleta a WHERE a.ativo = true GROUP BY a.sexo")
     List<Object[]> countAtletasBySexo();
 
@@ -31,7 +32,6 @@ public interface AtletaRepository extends JpaRepository<Atleta, Long> {
     List<Object[]> countAtletasByAnoNascimento();
 
     // --- AUTOMAÇÃO DE WHATSAPP ---
-    // Busca atletas ativos que vencem em X dias e que ainda não foram notificados hoje
     @Query(value = "SELECT * FROM atletas WHERE ativo = true " +
             "AND dia_vencimento = EXTRACT(DAY FROM (CURRENT_DATE + CAST(:dias || ' days' AS INTERVAL))) " +
             "AND (ultima_notificacao IS NULL OR ultima_notificacao < CURRENT_DATE)",

@@ -1,67 +1,51 @@
 package com.cadastroatletas.Controller;
 
 import com.cadastroatletas.DTO.LoginDTO;
-import com.cadastroatletas.DTO.UsuarioResponseDTO;
-import com.cadastroatletas.Entity.Atleta;
-import com.cadastroatletas.Entity.Professor;
-import com.cadastroatletas.Repository.AtletaRepository;
-import com.cadastroatletas.Repository.ProfessorRepository;
+import com.cadastroatletas.Entity.Professor; // AJUSTADO
+import com.cadastroatletas.Service.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
+import java.util.Map;
 
-@CrossOrigin(origins = "https://seu-projeto.vercel.app") // Certifique-se que seu Next.js está na porta 3000
 @RestController
-@RequestMapping("/api/auth") // Certifique-se que o Next está na 3000
+@RequestMapping("/api/auth")
+@CrossOrigin("*")
 public class LoginController {
 
     @Autowired
-    private ProfessorRepository profRepository;
+    private AuthenticationManager authenticationManager;
 
     @Autowired
-    private AtletaRepository atletaRepository;
+    private TokenService tokenService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginDTO login) {
+    public ResponseEntity<?> login(@RequestBody LoginDTO data) {
+        try {
+            // Valida as credenciais do Professor
+            var usernamePassword = new UsernamePasswordAuthenticationToken(data.getEmail(), data.getSenha());
+            var auth = this.authenticationManager.authenticate(usernamePassword);
 
-        // Log para ajudar a debugar o que está chegando
-        System.out.println("Tentativa de login para: " + login.getEmail());
+            // IMPORTANTE: Agora fazemos o cast para Professor
+            Professor professor = (Professor) auth.getPrincipal();
 
-        // 1. Tentar validar como Professor
-        Optional<Professor> professorOpt = profRepository.findByEmail(login.getEmail());
-        if (professorOpt.isPresent()) {
-            Professor p = professorOpt.get();
-            if (p.getSenha() != null && p.getSenha().trim().equals(login.getSenha().trim())) {
-                System.out.println("Professor autenticado com sucesso!");
-                return ResponseEntity.ok(new UsuarioResponseDTO(p.getNomeCompleto(), "PROFESSOR", p.getEmail(), p.getFotoUrl()));
-            }
+            // Gera o token usando a entidade correta
+            var token = tokenService.generateToken(professor);
+
+            // Retornamos os dados para o Next.js
+            return ResponseEntity.ok(Map.of(
+                    "token", token,
+                    "nome", professor.getNomeCompleto(),
+                    "papel", professor.getPapel() != null ? professor.getPapel() : "PROFESSOR",
+                    "foto", professor.getFotoUrl() != null ? professor.getFotoUrl() : ""
+            ));
+
+        } catch (Exception e) {
+            System.out.println("Falha no login para " + data.getEmail() + ": " + e.getMessage());
+            return ResponseEntity.status(401).body("E-mail ou senha incorretos.");
         }
-
-        // 2. Tentar validar como Aluno
-        Optional<Atleta> atletaOpt = atletaRepository.findByEmail(login.getEmail());
-        if (atletaOpt.isPresent()) {
-            Atleta a = atletaOpt.get();
-            if (a.getSenha() != null && a.getSenha().trim().equals(login.getSenha().trim())) {
-                System.out.println("Aluno autenticado com sucesso!");
-                return ResponseEntity.ok(new UsuarioResponseDTO(a.getNomeCompleto(), "ALUNO", a.getEmail(), null));
-            }
-            System.out.println("Tentativa para: " + login.getEmail());
-
-            Optional<Professor> prof = profRepository.findByEmail(login.getEmail());
-            if(prof.isPresent()) {
-                System.out.println("Professor encontrado! Senha no banco: " + prof.get().getSenha());
-                // ... restante da lógica
-            } else {
-                System.out.println("Usuário não encontrado.");
-            }
-        }
-
-        // Se chegar aqui, nenhum dos dois foi validado
-        System.out.println("Falha na autenticação para: " + login.getEmail());
-        return ResponseEntity.status(401).body("E-mail ou senha incorretos.");
-
-
     }
 }

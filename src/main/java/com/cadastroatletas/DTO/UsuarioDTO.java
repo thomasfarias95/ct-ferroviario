@@ -1,12 +1,27 @@
 package com.cadastroatletas.DTO;
 
-
-
 import lombok.Data;
 
 @Data
 public class UsuarioDTO {
     private String nomeCompleto;
+    private String email;
+    private String papel;
+    private String graduacao;
+    private String numeroZempo;
+    private String senha; // ADICIONADO PARA RESOLVER O ERRO NO CONTROLLER
+    private String fotoUrl;
+    private int diaVencimento;
+
+    // --- GETTERS E SETTERS ---
+
+    public String getSenha() {
+        return senha;
+    }
+
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
 
     public String getEmail() {
         return email;
@@ -63,16 +78,4 @@ public class UsuarioDTO {
     public void setDiaVencimento(int diaVencimento) {
         this.diaVencimento = diaVencimento;
     }
-
-    private String email;
-    private String papel;
-    private String graduacao;
-    private String numeroZempo; // ESSA É A SUA SENHA
-    private String fotoUrl;
-    private int diaVencimento;
-
-
-
-
-
 }

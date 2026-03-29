@@ -2,13 +2,18 @@ package com.cadastroatletas.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
 @Entity
 @Table(name = "atletas")
-public class Atleta {
+public class Atleta implements UserDetails { // <-- Implementação obrigatória para Segurança
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,7 +26,6 @@ public class Atleta {
     private String telefone;
     private LocalDate dataNascimento;
 
-    // Aumentado o tamanho para suportar nomes como "PRETA 1º DAN"
     @Column(length = 50)
     private String graduacao;
 
@@ -43,7 +47,30 @@ public class Atleta {
 
     public Atleta() {}
 
-    // --- Getters e Setters ---
+    // --- MÉTODOS DO USERDETAILS (Obrigatórios para o SecurityFilter funcionar) ---
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Define o nível de acesso. ROLE_USER por padrão.
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    @Override
+    public String getPassword() {
+        return this.senha;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email; // O email será usado como login
+    }
+
+    @Override public boolean isAccountNonExpired() { return true; }
+    @Override public boolean isAccountNonLocked() { return true; }
+    @Override public boolean isCredentialsNonExpired() { return true; }
+    @Override public boolean isEnabled() { return this.ativo; }
+
+    // --- SEUS GETTERS E SETTERS ---
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -71,7 +98,6 @@ public class Atleta {
 
     public String getGraduacao() { return graduacao; }
 
-    // Lógica inteligente: Só atualiza a data se a faixa REALMENTE mudar
     public void setGraduacao(String graduacao) {
         if (graduacao != null && !Objects.equals(this.graduacao, graduacao)) {
             this.dataUltimaGraduacao = LocalDate.now();
