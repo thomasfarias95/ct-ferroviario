@@ -27,22 +27,21 @@ public class SecurityFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         var token = this.recoverToken(request);
+        var login = tokenService.validateToken(token);
 
-        if (token != null) {
-            var login = tokenService.validateToken(token);
-
-            // Se o token for válido e o e-mail não estiver vazio
-            if (login != null && !login.isEmpty()) {
-                // BUSCA O PROFESSOR: Garante que o Thomas ou o Sensei Aldisio sejam autenticados
-                UserDetails user = professorRepository.findByEmail(login);
-
-                if (user != null) {
-                    var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
-            }
+        // ADICIONE ESTA VERIFICAÇÃO: Se a rota for de login ou professores,
+        // deixe passar sem tentar autenticar no banco.
+        String path = request.getRequestURI();
+        if (path.contains("/auth/login") || path.contains("/professores")) {
+            filterChain.doFilter(request, response);
+            return;
         }
-        // Segue para o Controller ou próximo filtro
+
+        if (login != null) {
+            UserDetails user = professorRepository.findByEmail(login);
+            var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
         filterChain.doFilter(request, response);
     }
 

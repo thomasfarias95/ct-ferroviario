@@ -26,21 +26,17 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
+                .cors(Customizer.withDefaults()) // Ativa seu CorsConfig
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // 1. Libera o método OPTIONS (essencial para o CORS da Vercel funcionar)
+                        // Tente liberar geral para testar se o problema é o filtro
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // 2. Libera as rotas de Login e Lista de Professores (com o prefixo /api)
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/professores", "/professores").permitAll()
-
-                        // 3. Qualquer outra coisa exige o Token
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/professores/**").permitAll()
+                        .requestMatchers("/professores/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                // 4. ATIVA O CORS (isso liga o seu CorsConfig.java ao Security)
-                .cors(Customizer.withDefaults())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
