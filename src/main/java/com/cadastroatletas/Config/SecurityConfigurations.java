@@ -1,5 +1,6 @@
 package com.cadastroatletas.Config;
 
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,17 +26,22 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                .cors(Customizer.withDefaults()) // Ativa o CORS configurado no CorsConfig
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // LIBERAÇÃO DAS ROTAS PÚBLICAS (Essencial para as fotos e o login)
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/professores", "/professores").permitAll()
+                        // Importante: Liberar o método OPTIONS para o CORS funcionar
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // QUALQUER OUTRA ROTA (Dashboard, Atletas, etc) exige Token
+                        // Liberar rotas públicas com o prefixo /api
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/professores").permitAll()
+
+                        // O restante precisa de autenticação
                         .anyRequest().authenticated()
                 )
+                // ESSA LINHA ABAIXO É O SEGREDO: Ela ativa o seu CorsConfig
+                .cors(Customizer.withDefaults())
+
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
