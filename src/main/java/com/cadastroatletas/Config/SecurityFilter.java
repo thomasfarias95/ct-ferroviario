@@ -1,6 +1,6 @@
 package com.cadastroatletas.Config;
 
-import com.cadastroatletas.Repository.AtletaRepository;
+import com.cadastroatletas.Repository.ProfessorRepository; // Importação correta para o login de professores
 import com.cadastroatletas.Service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,7 +22,7 @@ public class SecurityFilter extends OncePerRequestFilter {
     private TokenService tokenService;
 
     @Autowired
-    private AtletaRepository atletaRepository;
+    private ProfessorRepository professorRepository; // Foco total no repositório de professores
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -31,9 +31,10 @@ public class SecurityFilter extends OncePerRequestFilter {
         if (token != null) {
             var login = tokenService.validateToken(token);
 
-            // Se o token for válido e o login (e-mail) não estiver vazio
+            // Se o token for válido e o e-mail não estiver vazio
             if (login != null && !login.isEmpty()) {
-                UserDetails user = atletaRepository.findByEmail(login);
+                // BUSCA O PROFESSOR: Garante que o Thomas ou o Sensei Aldisio sejam autenticados
+                UserDetails user = professorRepository.findByEmail(login);
 
                 if (user != null) {
                     var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
@@ -41,7 +42,7 @@ public class SecurityFilter extends OncePerRequestFilter {
                 }
             }
         }
-        // Segue para o próximo filtro ou para o Controller
+        // Segue para o Controller ou próximo filtro
         filterChain.doFilter(request, response);
     }
 
@@ -50,6 +51,4 @@ public class SecurityFilter extends OncePerRequestFilter {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
         return authHeader.replace("Bearer ", "");
     }
-
-
 }
