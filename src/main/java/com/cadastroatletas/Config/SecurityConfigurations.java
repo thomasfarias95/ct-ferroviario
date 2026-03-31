@@ -26,26 +26,23 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
+                // 1. Ativa a configuração de CORS que você criou no CorsConfig
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // Importante: Liberar o método OPTIONS para o CORS funcionar
+                        // 2. Libera explicitamente as rotas públicas (incluindo o prefixo /api)
+                        .requestMatchers(HttpMethod.GET, "/api/professores").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+
+                        // 3. Libera o método OPTIONS (essencial para o CORS funcionar entre Vercel e Render)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Liberar rotas públicas com o prefixo /api
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/professores").permitAll()
-
-                        // O restante precisa de autenticação
                         .anyRequest().authenticated()
                 )
-                // ESSA LINHA ABAIXO É O SEGREDO: Ela ativa o seu CorsConfig
-                .cors(Customizer.withDefaults())
-
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
