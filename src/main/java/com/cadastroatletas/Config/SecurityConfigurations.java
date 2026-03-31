@@ -25,28 +25,19 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-            // 1. ATIVA O CORS: Busca as regras que você definiu no CorsConfig.java
-            .cors(Customizer.withDefaults()) 
-            
-            // 2. DESATIVA CSRF: Como usamos Token JWT, não precisamos de proteção contra Cookies
-            .csrf(csrf -> csrf.disable())
-            
-            // 3. STATELESS: O servidor não guarda sessão, apenas valida o Token em cada requisição
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            
-            // 4. REGRAS DE ACESSO (Onde liberamos o público do privado)
-            .authorizeHttpRequests(authorize -> authorize
-                // Rotas que QUALQUER UM pode acessar (Landing Page e Login)
-                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/professores").permitAll()
-                
-                // Qualquer outra rota (Cadastro, Dashboard, Financeiro) exige estar logado
-                .anyRequest().authenticated()
-            )
-            
-            // 5. FILTRO DE TOKEN: Verifica o JWT antes de tentar autenticar o usuário
-            .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
-            .build();
+                .cors(Customizer.withDefaults()) // Ativa o CORS configurado no CorsConfig
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize
+                        // LIBERAÇÃO DAS ROTAS PÚBLICAS (Essencial para as fotos e o login)
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/professores", "/professores").permitAll()
+
+                        // QUALQUER OUTRA ROTA (Dashboard, Atletas, etc) exige Token
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
@@ -56,7 +47,6 @@ public class SecurityConfigurations {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // Define o padrão de criptografia das senhas dos Senseis
         return new BCryptPasswordEncoder();
     }
 }
