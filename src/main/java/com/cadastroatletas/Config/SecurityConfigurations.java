@@ -26,23 +26,25 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                // 1. Ativa a configuração de CORS que você criou no CorsConfig
-                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // 2. Libera explicitamente as rotas públicas (incluindo o prefixo /api)
-                        .requestMatchers(HttpMethod.GET, "/api/professores").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-
-                        // 3. Libera o método OPTIONS (essencial para o CORS funcionar entre Vercel e Render)
+                        // 1. Libera o método OPTIONS (essencial para o CORS da Vercel funcionar)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // 2. Libera as rotas de Login e Lista de Professores (com o prefixo /api)
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/professores", "/professores").permitAll()
+
+                        // 3. Qualquer outra coisa exige o Token
                         .anyRequest().authenticated()
                 )
+                // 4. ATIVA O CORS (isso liga o seu CorsConfig.java ao Security)
+                .cors(Customizer.withDefaults())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
