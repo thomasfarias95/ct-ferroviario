@@ -9,9 +9,10 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("https://ctjudo.vercel.app", "http://localhost:3000") // Adicione seu link da Vercel aqui
+                .allowedOriginPatterns("https://ctjudo.vercel.app", "http://localhost:3000", "https://*.vercel.app")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowCredentials(true)
+                .maxAge(3600); // Cache da pré-requisição por 1 hora
     }
 }
