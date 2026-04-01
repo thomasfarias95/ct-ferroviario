@@ -26,15 +26,25 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                .cors(Customizer.withDefaults()) // Ativa seu CorsConfig
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(request -> {
+                    var corsConfiguration = new org.springframework.web.cors.CorsConfiguration();
+                    // Libera a Vercel e o Localhost
+                    corsConfiguration.setAllowedOriginPatterns(java.util.List.of("https://*.vercel.app", "http://localhost:3000"));
+                    corsConfiguration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+                    corsConfiguration.setAllowedHeaders(java.util.List.of("*"));
+                    corsConfiguration.setAllowCredentials(true);
+                    return corsConfiguration;
+                }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // Tente liberar geral para testar se o problema é o filtro
+                        // Garante que o OPTIONS (pre-flight) seja 100% público
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/professores/**").permitAll()
-                        .requestMatchers("/professores/**").permitAll()
+
+                        // Libera as rotas de login e professores (com e sem o prefixo /api para segurança)
+                        .requestMatchers("/api/auth/**", "/auth/login").permitAll()
+                        .requestMatchers("/api/professores/**", "/professores/**").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
