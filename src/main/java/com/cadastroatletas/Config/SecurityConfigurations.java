@@ -26,27 +26,29 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                // 1. Configuração de CORS integrada e agressiva
+                // 1. Configuração de CORS integrada e prioritária
                 .cors(cors -> cors.configurationSource(request -> {
-                    var configuration = new org.springframework.web.cors.CorsConfiguration();
-                    configuration.setAllowedOriginPatterns(java.util.List.of("https://*.vercel.app", "http://localhost:3000"));
-                    configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-                    configuration.setAllowedHeaders(java.util.List.of("*"));
-                    configuration.setAllowCredentials(true);
-                    return configuration;
+                    var config = new org.springframework.web.cors.CorsConfiguration();
+                    // Aceita qualquer origem da Vercel e Localhost
+                    config.setAllowedOriginPatterns(java.util.List.of("https://*.vercel.app", "http://localhost:3000"));
+                    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+                    config.setAllowedHeaders(java.util.List.of("*"));
+                    config.setAllowCredentials(true);
+                    return config;
                 }))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // 2. Libera explicitamente o OPTIONS (essencial para evitar 403 no pre-flight)
+                        // 2. Libera o OPTIONS (Pre-flight) - Crucial para navegadores
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // 3. Libera as rotas públicas (tentei cobrir todas as variações de barra)
+                        // 3. Libera rotas públicas COM e SEM o prefixo /api (por segurança)
                         .requestMatchers("/api/auth/**", "/auth/**").permitAll()
                         .requestMatchers("/api/professores/**", "/professores/**").permitAll()
 
                         .anyRequest().authenticated()
                 )
+                // 4. O filtro de segurança só entra DEPOIS das liberações acima
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
