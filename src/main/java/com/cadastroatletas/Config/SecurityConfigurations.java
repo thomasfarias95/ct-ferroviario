@@ -26,23 +26,23 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                .csrf(csrf -> csrf.disable())
+                // 1. Configuração de CORS integrada e agressiva
                 .cors(cors -> cors.configurationSource(request -> {
-                    var corsConfiguration = new org.springframework.web.cors.CorsConfiguration();
-                    // Libera a Vercel e o Localhost
-                    corsConfiguration.setAllowedOriginPatterns(java.util.List.of("https://*.vercel.app", "http://localhost:3000"));
-                    corsConfiguration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-                    corsConfiguration.setAllowedHeaders(java.util.List.of("*"));
-                    corsConfiguration.setAllowCredentials(true);
-                    return corsConfiguration;
+                    var configuration = new org.springframework.web.cors.CorsConfiguration();
+                    configuration.setAllowedOriginPatterns(java.util.List.of("https://*.vercel.app", "http://localhost:3000"));
+                    configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+                    configuration.setAllowedHeaders(java.util.List.of("*"));
+                    configuration.setAllowCredentials(true);
+                    return configuration;
                 }))
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // Garante que o OPTIONS (pre-flight) seja 100% público
+                        // 2. Libera explicitamente o OPTIONS (essencial para evitar 403 no pre-flight)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Libera as rotas de login e professores (com e sem o prefixo /api para segurança)
-                        .requestMatchers("/api/auth/**", "/auth/login").permitAll()
+                        // 3. Libera as rotas públicas (tentei cobrir todas as variações de barra)
+                        .requestMatchers("/api/auth/**", "/auth/**").permitAll()
                         .requestMatchers("/api/professores/**", "/professores/**").permitAll()
 
                         .anyRequest().authenticated()
@@ -50,7 +50,6 @@ public class SecurityConfigurations {
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
