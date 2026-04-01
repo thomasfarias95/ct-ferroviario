@@ -1,6 +1,6 @@
 package com.cadastroatletas.Config;
 
-import com.cadastroatletas.Repository.ProfessorRepository; // Importação correta para o login de professores
+import com.cadastroatletas.Repository.ProfessorRepository;
 import com.cadastroatletas.Service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,26 +22,26 @@ public class SecurityFilter extends OncePerRequestFilter {
     private TokenService tokenService;
 
     @Autowired
-    private ProfessorRepository professorRepository; // Foco total no repositório de professores
+    private ProfessorRepository professorRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         var token = this.recoverToken(request);
-        var login = tokenService.validateToken(token);
 
-        // ADICIONE ESTA VERIFICAÇÃO: Se a rota for de login ou professores,
-        // deixe passar sem tentar autenticar no banco.
-        String path = request.getRequestURI();
-        if (path.contains("/auth/login") || path.contains("/professores")) {
-            filterChain.doFilter(request, response);
-            return;
+        if (token != null) {
+            var login = tokenService.validateToken(token);
+
+            if (login != null) {
+                UserDetails user = professorRepository.findByEmail(login);
+
+                if (user != null) {
+                    var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            }
         }
 
-        if (login != null) {
-            UserDetails user = professorRepository.findByEmail(login);
-            var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        }
+        // Sempre executa o próximo passo da corrente
         filterChain.doFilter(request, response);
     }
 
