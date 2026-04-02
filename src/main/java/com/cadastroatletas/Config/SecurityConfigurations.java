@@ -32,27 +32,36 @@ public class SecurityConfigurations {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Usa o Bean abaixo
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**", "/auth/**").permitAll()
-                        .requestMatchers("/api/professores/**", "/professores/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll() // Libera o Login
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll() // Libera o Registro (se houver)
+                        .requestMatchers(HttpMethod.GET, "/api/professores").permitAll() // Libera a listagem de professores
+                        .anyRequest().authenticated() // Todo o resto exige login/token
                 )
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                .cors(Customizer.withDefaults())
                 .build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("https://seu-frontend.vercel.app", "http://localhost:3000"));
+
+
+        configuration.setAllowedOrigins(Arrays.asList(
+                "https://ctjudo.vercel.app",
+                "http://localhost:3000"
+        ));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-
         return source;
     }
 
