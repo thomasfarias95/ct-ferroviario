@@ -21,37 +21,31 @@ public class ProfessorService {
     public Professor salvar(Professor professor) {
         String senhaParaCriptografar;
 
-        // Verifica se o professor já enviou uma senha ou se precisamos gerar a padrão
+        // 1. Verifica se o professor já enviou uma senha ou se precisamos gerar a padrão
         if (professor.getSenha() == null || professor.getSenha().trim().isEmpty()) {
 
-            // 1. Limpa espaços do nome completo
             String nome = professor.getNomeCompleto().trim();
-
-            // 2. Quebra o nome em partes (Array de Strings)
             String[] partes = nome.split("\\s+");
-
-            // 3. CORREÇÃO: Pegamos a primeira posição para poder usar o toLowerCase()
             String primeiroNome = partes[0].toLowerCase();
 
-            // 4. Regra de negócio: Limita o prefixo a 4 caracteres
+            // Regra de negócio: Limita o prefixo a 4 caracteres
             if (primeiroNome.length() > 4) {
                 primeiroNome = primeiroNome.substring(0, 4);
             }
 
-            // Resultado Ex: "thomas" vira "thom2026"
+            // Ex: "Thomas" vira "thom2026"
             senhaParaCriptografar = primeiroNome + "2026";
 
         } else {
-            // Se o professor já definiu uma senha, usamos a dele (removendo espaços)
             senhaParaCriptografar = professor.getSenha().trim();
         }
 
-        // 5. Trava de segurança: Senha não pode ser maior que 8 caracteres para o padrão do sistema
-        if (senhaParaCriptografar.length() > 8) {
-            throw new RuntimeException("A senha não pode ter mais de 8 caracteres.");
+        // 2. Trava de segurança (opcional, dependendo da sua regra de negócio)
+        if (senhaParaCriptografar.length() > 20) { // Aumentei para 20 para dar mais flexibilidade
+            throw new RuntimeException("A senha escolhida é muito longa.");
         }
 
-        // 6. CRUCIAL: Criptografa a senha antes de persistir no PostgreSQL
+        // 3. Criptografia antes de salvar
         professor.setSenha(passwordEncoder.encode(senhaParaCriptografar));
 
         return repository.save(professor);
@@ -61,12 +55,13 @@ public class ProfessorService {
         return repository.findAll();
     }
 
+    // Agora o repositório reconhece este método sem erros
     public Optional<Professor> buscarPorZempo(String zempo) {
         return repository.findByNumeroZempo(zempo);
     }
 
+    // Removido o Cast manual, pois o repositório agora retorna Optional<Professor>
     public Optional<Professor> buscarPorEmail(String email) {
-        // Cast necessário para garantir o retorno do tipo Professor
-        return Optional.ofNullable((Professor) repository.findByEmail(email));
+        return repository.findByEmail(email);
     }
 }

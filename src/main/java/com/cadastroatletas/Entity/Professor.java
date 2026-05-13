@@ -10,7 +10,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "professores")
-public class Professor implements UserDetails { // <-- Implementação para o Security
+public class Professor implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,20 +26,25 @@ public class Professor implements UserDetails { // <-- Implementação para o Se
     private String numeroContato;
     private String email;
 
+    @Column(unique = true)
+    private String login;
+
     @Column(name = "foto_url")
     private String fotoUrl;
 
-    @Column(name = "senha", length = 100) // Espaço para o Hash do BCrypt
+    @Column(name = "senha", length = 100)
     private String senha;
 
-    private String papel; // Ex: "ADMIN", "INSTRUTOR"
+    private String papel; // Ex: "ADMIN", "USER"
 
     // --- MÉTODOS OBRIGATÓRIOS DO USERDETAILS ---
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Se o papel for "ADMIN", ele ganha essa autoridade
-        return List.of(new SimpleGrantedAuthority("ROLE_" + (papel != null ? papel.toUpperCase() : "PROFESSOR")));
+        if (this.papel != null && this.papel.equalsIgnoreCase("ADMIN")) {
+            return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_USER"));
+        }
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override
@@ -49,7 +54,7 @@ public class Professor implements UserDetails { // <-- Implementação para o Se
 
     @Override
     public String getUsername() {
-        return this.email; // O e-mail continua sendo o login
+        return this.login; // Importante: deve retornar o campo que você usa no findBy
     }
 
     @Override public boolean isAccountNonExpired() { return true; }
@@ -57,8 +62,7 @@ public class Professor implements UserDetails { // <-- Implementação para o Se
     @Override public boolean isCredentialsNonExpired() { return true; }
     @Override public boolean isEnabled() { return true; }
 
-    // --- SEUS GETTERS E SETTERS ---
-    // (Pode manter todos os que você já tem abaixo)
+    // --- GETTERS E SETTERS ---
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -83,6 +87,9 @@ public class Professor implements UserDetails { // <-- Implementação para o Se
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getLogin() { return login; }
+    public void setLogin(String login) { this.login = login; }
 
     public String getFotoUrl() { return fotoUrl; }
     public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
